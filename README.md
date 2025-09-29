@@ -1,8 +1,10 @@
-# Simple C/C++ Project Setup
+# OpenGL Boilerplate Setup
 
-This is a minimal cross-platform C++ project that currently uses **GLFW** and **OpenGL**, built with **CMake**.
+## Download
 
-A `Makefile` is included to make building and running the project consistent across Linux, macOS, and Windows.
+```
+git clone --recurse-submodules https://github.com/muntalee/cps511-assignment/
+```
 
 ## Dependencies
 
@@ -13,38 +15,21 @@ A `Makefile` is included to make building and running the project consistent acr
   * MSVC (Visual Studio) or MinGW on Windows
 * **Ninja** (build tool)
 
-## Download
-
-```
-git clone --recurse-submodules https://github.com/muntalee/sample-c-cpp-project
-```
-
 ## Install
-
-* **Ubuntu / Debian**
-
-  ```bash
-  sudo apt update
-  sudo apt install build-essential cmake ninja-build libgl1-mesa-dev xorg-dev
-  ```
-
-* **Fedora**
-
-  ```bash
-  sudo dnf install gcc-c++ cmake ninja-build mesa-libGL-devel libX11-devel libXrandr-devel libXcursor-devel libXi-devel
-  ```
-
-* **macOS**
-
-  ```bash
-  brew install cmake ninja
-  ```
-
-  (OpenGL and Clang come with macOS.)
 
 * **Windows**
 
-  * **Option 1: Visual Studio (MSVC toolchain)**
+  * **Option 1: Scoop + MinGW (GCC toolchain) RECOMMENDED**
+
+    * Install [Scoop](https://scoop.sh/) (a Windows package manager).
+    * Then all other dependencies
+
+      ```powershell
+      scoop install mingw
+      scoop install ninja cmake
+      ```
+
+  * **Option 2: Visual Studio (MSVC toolchain)**
 
     * Install [Visual Studio Community](https://visualstudio.microsoft.com/)
       (Choose **Desktop development with C++** workload.)
@@ -54,15 +39,28 @@ git clone --recurse-submodules https://github.com/muntalee/sample-c-cpp-project
       winget install Ninja-build.Ninja
       ```
 
-  * **Option 2: Scoop + MinGW (GCC toolchain)**
+* **macOS**
 
-    * Install [Scoop](https://scoop.sh/) (a Windows package manager).
-    * Then all other dependencies
+  ```bash
+  brew install cmake ninja
+  ```
 
-      ```powershell
-      scoop install mingw
-      scoop install ninja cmake
-      ```
+  (OpenGL and Clang come with macOS.)
+
+* **Linux**
+
+  * **Ubuntu / Debian**
+
+    ```bash
+    sudo apt update
+    sudo apt install build-essential cmake ninja-build libgl1-mesa-dev xorg-dev
+    ```
+
+  * **Fedora**
+
+    ```bash
+    sudo dnf install gcc-c++ cmake ninja-build mesa-libGL-devel libX11-devel libXrandr-devel libXcursor-devel libXi-devel
+    ```
 
 ## Build & Run
 
