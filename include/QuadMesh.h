@@ -1,3 +1,7 @@
+
+#include <GL/glew.h>
+#include "Vectors.h"
+
 struct MeshVertex
 {
 	Vector3	position;
@@ -66,16 +70,18 @@ public:
 	{
 		return MaxMeshDim(minMeshSize, maxMeshSize);
 	}
-	void QuadMesh::addVertex(float x, float y, float z);
-	void QuadMesh::addNormal(float nx, float ny, float nz);
-	void QuadMesh::addIndices(unsigned int i1, unsigned int i2, unsigned int i3, unsigned int i4);
+	void addVertex(float x, float y, float z);
+	void addNormal(float nx, float ny, float nz);
+	void addIndices(unsigned int i1, unsigned int i2, unsigned int i3, unsigned int i4);
+	
 	bool InitMesh(int meshSize, Vector3 origin, double meshLength, double meshWidth,Vector3 dir1, Vector3 dir2);
 	void DrawMesh(int meshSize); // Draws using Immediate Mode Rendering
-	
+
 	// Draw using VBOs - you need to fill in this code as well as CreateMeshVBO and then in 
 	// Robot3D.cpp you need to call DrawMeshVBO() instead of DrawMesh()
 	void DrawMeshVBO(int meshSize); 
-	void QuadMesh::CreateMeshVBO(int meshSize, GLint attribVertexPosition, GLint attribVertexNormal);
+	void CreateMeshVBO(int meshSize, GLint attribVertexPosition, GLint attribVertexNormal);
+
 	
 	
 	void SetMaterial(Vector3 ambient, Vector3 diffuse, Vector3 specular, double shininess);
@@ -83,4 +89,3 @@ public:
 	
 	
 };
-

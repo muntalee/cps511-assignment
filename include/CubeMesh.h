@@ -1,3 +1,6 @@
+#include <GL/glew.h>
+#include "Vectors.h"
+
 class CubeMesh
 {
 private:
@@ -23,8 +26,8 @@ public:
 	typedef std::pair<int, int> MaxMeshDim;
 	
 	CubeMesh();
-	void CubeMesh::drawCubeMesh();
-	void CubeMesh::setMaterial(Vector3 ambient, Vector3 diffuse, Vector3 specular, double shininess);
+	void drawCubeMesh();
+	void setMaterial(Vector3 ambient, Vector3 diffuse, Vector3 specular, double shininess);
 };
 
 
