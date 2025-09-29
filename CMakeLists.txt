@@ -31,10 +31,10 @@ target_include_directories(glew PUBLIC ${CMAKE_SOURCE_DIR}/extern/glew/include)
 add_subdirectory(${CMAKE_SOURCE_DIR}/extern/SOIL)
 target_include_directories(${OUT} PRIVATE ${CMAKE_SOURCE_DIR}/extern/SOIL/inc/SOIL)
 
-# freeglut (skip on macOS, use system frameworks there)
+# freeglut
 if (NOT APPLE)
-    set(FREEGLUT_BUILD_DEMOS OFF CACHE BOOL "" FORCE)       # no demos
-    set(FREEGLUT_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE) # static only
+    set(FREEGLUT_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
+    set(FREEGLUT_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(FREEGLUT_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
 
     add_subdirectory(${CMAKE_SOURCE_DIR}/extern/freeglut)
@@ -56,27 +56,23 @@ target_link_libraries(${OUT}
         soil
 )
 
-if(APPLE)
-    add_definitions(-DGL_SILENCE_DEPRECATION)
-endif()
-
-# extra platform-specific links
+# platform-specific
 if (WIN32)
     target_link_libraries(${OUT}
         PRIVATE
+            freeglut_static
+            glu32
             gdi32
             user32
+            kernel32
     )
-elseif(APPLE)
+elseif (APPLE)
     target_link_libraries(${OUT}
         PRIVATE
             "-framework GLUT"
             "-framework OpenGL"
     )
-    if(APPLE)
     add_definitions(-DGL_SILENCE_DEPRECATION)
-endif()
-
 else()
     target_link_libraries(${OUT}
         PRIVATE
