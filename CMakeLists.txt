@@ -38,6 +38,7 @@ if (NOT APPLE)
     set(FREEGLUT_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
 
     add_subdirectory(${CMAKE_SOURCE_DIR}/extern/freeglut)
+    target_include_directories(${OUT} PRIVATE ${CMAKE_SOURCE_DIR}/extern/freeglut/include)
 endif()
 
 # make sure Windows builds know it's static
