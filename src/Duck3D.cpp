@@ -2,25 +2,27 @@
                    Hierarchical Duck Target Example
 ********************************************************************/
 #include "Duck.h"
+#include <cmath>
 
-// ---------------- GLOBALS ---------------- //
 const int vWidth = 650;
 const int vHeight = 500;
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 DuckConfig duckConfig = {
-    1.5f, // body radius (smaller)
-    0.8f, // head radius
-    0.3f, // beak radius
-    0.6f, // beak length
-    4.0f, // stand height
-    0.2f  // stand radius
+    1.2f,  // body radius
+    0.65f, // head radius
+    0.18f, // beak radius
+    0.42f, // beak length
+    3.8f,  // stand height
+    0.18f  // stand radius
 };
 
-// Animation control
-float duckX = 8.0f; // start on right
+float duckX = 8.0f;
 float duckAngle = 0.0f;
 
-// Meshes
 CubeMesh *cubeMesh = nullptr;
 QuadMesh *groundMesh = nullptr;
 int meshSize = 16;
@@ -48,11 +50,10 @@ int main(int argc, char **argv)
 }
 
 // ================================================================
-// OPENGL INIT
+// INIT
 // ================================================================
 void initOpenGL(int w, int h)
 {
-  // Lighting
   GLfloat light_pos[] = {-4.0f, 8.0f, 8.0f, 1.0f};
   GLfloat light_diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
   GLfloat light_specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -66,17 +67,14 @@ void initOpenGL(int w, int h)
   glEnable(GL_LIGHTING);
   glEnable(GL_LIGHT0);
 
-  // ✅ enable colors as materials
   glEnable(GL_COLOR_MATERIAL);
   glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
 
-  // GL settings
   glEnable(GL_DEPTH_TEST);
   glShadeModel(GL_SMOOTH);
   glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
   glEnable(GL_NORMALIZE);
 
-  // Ground mesh
   Vector3 origin(-16.0f, 0.0f, 16.0f);
   Vector3 dir1(1.0f, 0.0f, 0.0f);
   Vector3 dir2(0.0f, 0.0f, -1.0f);
@@ -94,19 +92,13 @@ void display(void)
   glLoadIdentity();
   gluLookAt(0.0, 6.0, 22.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 
-  // Booth
   drawBooth();
 
-  // Duck
   glPushMatrix();
-  glTranslatef(duckX, 2.0, 0.0);
+  glTranslatef(duckX, 1.0, 0.0);
   drawDuck();
   glPopMatrix();
 
-  // Duck stand
-  drawDuckStand();
-
-  // Ground
   glPushMatrix();
   glTranslatef(0.0, -5.0, 0.0);
   glColor3f(0.3f, 0.7f, 0.3f);
@@ -117,51 +109,49 @@ void display(void)
 }
 
 // ================================================================
-// DUCK DRAWING
+// DUCK
 // ================================================================
-// ================= DUCK =================
 void drawDuck()
 {
   drawDuckBody();
 
-  // head (slightly forward & above body)
+  // ----- Neck -----
   glPushMatrix();
-  glTranslatef(0.0, duckConfig.bodyRadius * 0.6f, duckConfig.bodyRadius * 0.6f);
-  drawDuckHead();
-
-  // beak attached at front
-  glTranslatef(duckConfig.headRadius * 0.9f, 0.0, 0.0);
-  drawDuckBeak();
+  glTranslatef(duckConfig.bodyRadius * 0.3f, duckConfig.bodyRadius * 0.3f, 0.0f);
+  glRotatef(90.0f, 0, 1, 0);
+  glRotatef(-90.0f, 1, 0, 0);
+  glColor3f(1.0, 1.0, 0.0);
+  glutSolidCone(duckConfig.headRadius * 1.4f, duckConfig.headRadius * 2.0f, 20, 12);
   glPopMatrix();
 
-  // tail
+  // ----- Head -----
+  glPushMatrix();
+  glTranslatef(duckConfig.bodyRadius * 0.4f, duckConfig.bodyRadius * 1.4f, 0.0f);
+  glColor3f(1.0, 1.0, 0.0);
+  glutSolidSphere(duckConfig.headRadius, 28, 28);
+  glPopMatrix();
+
+  // ----- Beak -----
+  glPushMatrix();
+  glTranslatef(duckConfig.bodyRadius * 0.9f, duckConfig.bodyRadius * 1.4f, 0.0f);
+  glRotatef(90, 0, 1, 0);
+  glColor3f(1.0, 0.25, 0.0);
+  glutSolidCone(duckConfig.beakRadius, duckConfig.beakLength, 20, 12);
+  glPopMatrix();
+
+  // ----- Tail (points backward, opposite of beak) -----
   drawDuckTail();
+
+  // ----- Target -----
+  drawDuckTarget();
 }
 
 void drawDuckBody()
 {
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
+  glScalef(1.15f, 0.95f, 1.05f);
   glutSolidSphere(duckConfig.bodyRadius, 30, 30);
-  glPopMatrix();
-
-  drawDuckTarget();
-}
-
-void drawDuckHead()
-{
-  glPushMatrix();
-  glColor3f(1.0, 1.0, 0.0);
-  glutSolidSphere(duckConfig.headRadius * 0.7f, 30, 30);
-  glPopMatrix();
-}
-
-void drawDuckBeak()
-{
-  glPushMatrix();
-  glColor3f(1.0, 0.2, 0.0);
-  glRotatef(90, 0, 1, 0);
-  glutSolidCone(duckConfig.beakRadius, duckConfig.beakLength, 20, 20);
   glPopMatrix();
 }
 
@@ -169,97 +159,96 @@ void drawDuckTail()
 {
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
-  glTranslatef(0.0, 0.0, -duckConfig.bodyRadius * 0.9f);
-  glRotatef(45, 1, 0, 0); // tilt up
-  glutSolidCone(0.8, 1.2, 20, 20);
+  glTranslatef(-duckConfig.bodyRadius * 0.8f, duckConfig.bodyRadius * 0.5f, 0.0f);
+  glRotatef(-90, 0, 1, 0);
+  glRotatef(-45, 1, 0, 0);
+  glutSolidCone(duckConfig.headRadius * 1.0f, duckConfig.headRadius * 1.8f, 20, 12);
   glPopMatrix();
 }
 
 void drawDuckTarget()
 {
-  glPushMatrix();
-  // Place target on body’s side
-  glTranslatef(-duckConfig.bodyRadius * 1.0f, 0.0f, 0.0f);
-  glScalef(0.3f, 0.3f, 0.1f);
+  // Base red flattened sphere (largest, back)
+  // glPushMatrix();
+  // glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f, duckConfig.bodyRadius * 0.95f);
+  // glScalef(0.22f, 0.22f, 0.06f);
+  // glColor3f(1.0, 0.0, 0.0);
+  // glutSolidSphere(4.0, 30, 30);
+  // glPopMatrix();
 
+  // White flattened sphere (smaller, slightly in front)
+  glPushMatrix();
+  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f, duckConfig.bodyRadius * 0.95f);
+  glScalef(0.22f, 0.22f, 0.06f);
   glColor3f(1.0, 0.0, 0.0);
-  glutSolidSphere(4.0, 30, 30); // outer red
-  glColor3f(1.0, 1.0, 1.0);
-  glutSolidSphere(2.5, 30, 30); // middle white
-  glColor3f(1.0, 0.0, 0.0);
-  glutSolidSphere(1.2, 30, 30); // inner red
+  glutSolidSphere(4.0, 30, 30);
+  glPopMatrix();
+
+  // // Red flattened sphere (smallest, more in front)
+  // glPushMatrix();
+  // glTranslatef(0.0f, 0.0f, 0.32f); // push further forward
+  // glColor3f(1.0, 0.0, 0.0);
+  // glutSolidSphere(1.2, 30, 30);
+  // glPopMatrix();
+
   glPopMatrix();
 }
 
-void drawDuckStand()
+// ================================================================
+// WATER & BOOTH
+// ================================================================
+void drawWaterWave(float width, int waves, float amp, float depth)
 {
-  glPushMatrix();
-  glColor3f(0.5, 0.3, 0.1);
-  glTranslatef(duckX, -duckConfig.standHeight * 0.2f, 0.0f);
-  glRotatef(-90, 1, 0, 0);
-  gluCylinder(gluNewQuadric(), duckConfig.standRadius, duckConfig.standRadius,
-              duckConfig.standHeight, 20, 20);
-  glPopMatrix();
-}
-
-void drawWaterWave()
-{
-  glColor3f(0.5f, 0.8f, 1.0f);
+  const float step = 0.08f;
+  const float yBottom = -depth;
+  glColor3f(0.52f, 0.82f, 1.0f);
   glBegin(GL_QUAD_STRIP);
-
-  float width = 16.0f; // across booth
-  float step = 0.2f;   // x step size
-  float amp = 1.0f;    // amplitude
-  float freq = 2.0f;   // frequency
-
-  for (float x = -width / 2; x <= width / 2; x += step)
+  for (float x = -width * 0.5f; x <= width * 0.5f + 0.0001f; x += step)
   {
-    float y = amp * sinf(freq * x * 0.3f);
-
-    // top wave line
+    float t = (x + width * 0.5f) / width;
+    float y = amp * sinf(2.0f * (float)M_PI * waves * t);
     glVertex3f(x, y, 0.0f);
-
-    // bottom straight line
-    glVertex3f(x, -2.0f, 0.0f);
+    glVertex3f(x, yBottom, 0.0f);
   }
   glEnd();
 }
 
 void drawBooth()
 {
-  // side pillars
-  glColor3f(0.3, 0.3, 0.4);
+  // pillar 1
+  glColor3f(0.36f, 0.37f, 0.52f);
   glPushMatrix();
-  glTranslatef(-7.0, 2.5, 0.0);
-  glScalef(1.0, 8.0, 1.0);
+  glTranslatef(-7.0, 2.0, 0.0);
+  glScalef(1.0, 6.0, 1.0);
   glutSolidCube(1.0);
   glPopMatrix();
 
+  // pillar 2
   glPushMatrix();
-  glTranslatef(7.0, 2.5, 0.0);
-  glScalef(1.0, 8.0, 1.0);
+  glTranslatef(7.0, 2.0, 0.0);
+  glScalef(1.0, 6.0, 1.0);
   glutSolidCube(1.0);
   glPopMatrix();
 
   // top beam
   glPushMatrix();
-  glTranslatef(0.0, 6.0, 0.0);
+  glTranslatef(0.0, 4.5, 0.0);
   glScalef(16.0, 1.0, 1.0);
   glutSolidCube(1.0);
   glPopMatrix();
 
   // base container
   glPushMatrix();
-  glTranslatef(0.0, -1.0, 0.0);
-  glColor3f(0.2, 0.2, 0.3);
-  glScalef(16.0, 3.0, 6.0);
+  glTranslatef(0.0, -0.5, 0.0);
+  glColor3f(0.24f, 0.25f, 0.36f);
+  glScalef(16.0, 2.0, 6.0);
   glutSolidCube(1.0);
   glPopMatrix();
 
   // water sine wave
   glPushMatrix();
-  glTranslatef(0.0, 0.0, 0.0);
-  drawWaterWave();
+  glTranslatef(0.0, 1.2f, 0.0);
+  drawWaterWave(13.0f, 5, 0.6f, 0.9f);
   glPopMatrix();
 }
 
@@ -278,7 +267,7 @@ void reshape(int w, int h)
 void keyboard(unsigned char key, int x, int y)
 {
   if (key == 27)
-    exit(0); // ESC
+    exit(0);
 }
 
 void animationHandler(int value)

@@ -1,3 +1,4 @@
+
 #ifndef DUCK_H
 #define DUCK_H
 
@@ -72,5 +73,6 @@ void drawDuckStand();
 
 // ---------- Environment ----------
 void drawBooth();
+void drawWaterWave(float width, int waves, float amp, float depth);
 
 #endif
