@@ -29,25 +29,33 @@ int meshSize = 16;
 
 // mouse controls
 float cameraZoom = 22.0f;
-float cameraPan = 0.0f;
+float cameraYaw = 0.0f;   // horizontal angle, in degrees
+float cameraPitch = 0.0f; // vertical angle, in degrees
 bool leftMouseDown = false;
 bool rightMouseDown = false;
 int lastMouseY = 0;
 int lastMouseX = 0;
 
 // Mouse handlers for camera control
-void mouseButton(int button, int state, int x, int y) {
-  if (button == GLUT_LEFT_BUTTON) {
+void mouseButton(int button, int state, int x, int y)
+{
+  if (button == GLUT_LEFT_BUTTON)
+  {
     leftMouseDown = (state == GLUT_DOWN);
     lastMouseY = y;
-  } else if (button == GLUT_RIGHT_BUTTON) {
+  }
+  else if (button == GLUT_RIGHT_BUTTON)
+  {
     rightMouseDown = (state == GLUT_DOWN);
     lastMouseX = x;
+    lastMouseY = y;
   }
 }
 
-void mouseMotion(int x, int y) {
-  if (leftMouseDown) {
+void mouseMotion(int x, int y)
+{
+  if (leftMouseDown)
+  {
     int dy = y - lastMouseY;
     cameraZoom += dy * 0.1f;
     if (cameraZoom < 5.0f)
@@ -56,14 +64,25 @@ void mouseMotion(int x, int y) {
       cameraZoom = 60.0f;
     lastMouseY = y;
     glutPostRedisplay();
-  } else if (rightMouseDown) {
+  }
+  else if (rightMouseDown)
+  {
     int dx = x - lastMouseX;
-    cameraPan += dx * 0.1f;
-    if (cameraPan < -10.0f)
-      cameraPan = -10.0f;
-    if (cameraPan > 10.0f)
-      cameraPan = 10.0f;
+    int dy = y - lastMouseY;
+    cameraYaw += dx * 0.5f;
+    cameraPitch += dy * 0.5f;
+    // Clamp pitch to avoid flipping
+    if (cameraPitch > 89.0f)
+      cameraPitch = 89.0f;
+    if (cameraPitch < -89.0f)
+      cameraPitch = -89.0f;
+    // Wrap yaw for 360 degrees
+    if (cameraYaw > 360.0f)
+      cameraYaw -= 360.0f;
+    if (cameraYaw < 0.0f)
+      cameraYaw += 360.0f;
     lastMouseX = x;
+    lastMouseY = y;
     glutPostRedisplay();
   }
 }
@@ -71,7 +90,8 @@ void mouseMotion(int x, int y) {
 // ================================================================
 // MAIN
 // ================================================================
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(vWidth, vHeight);
@@ -92,7 +112,8 @@ int main(int argc, char **argv) {
 // ================================================================
 // INIT
 // ================================================================
-void initOpenGL(int w, int h) {
+void initOpenGL(int w, int h)
+{
   GLfloat light_pos[] = {-4.0f, 8.0f, 8.0f, 1.0f};
   GLfloat light_diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
   GLfloat light_specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -124,11 +145,18 @@ void initOpenGL(int w, int h) {
 // ================================================================
 // DISPLAY
 // ================================================================
-void display(void) {
+void display(void)
+{
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glLoadIdentity();
-  gluLookAt(cameraPan, 3.0, cameraZoom, cameraPan, 3.0, 0.0, 0.0, 1.0, 0.0);
+  float camX = cameraZoom * sinf(cameraYaw * M_PI / 180.0f) * cosf(cameraPitch * M_PI / 180.0f);
+  float camY = cameraZoom * -sinf(cameraPitch * M_PI / 180.0f) + 3.0f;
+  float camZ = cameraZoom * cosf(cameraYaw * M_PI / 180.0f) * cosf(cameraPitch * M_PI / 180.0f);
+
+  gluLookAt(camX, camY, camZ, // Camera position
+            0.0, 3.0, 0.0,    // Look at the center of the scene
+            0.0, 1.0, 0.0);   // Up vector
 
   glutMouseFunc(mouseButton);
   glutMotionFunc(mouseMotion);
@@ -152,7 +180,8 @@ void display(void) {
 // ================================================================
 // DUCK
 // ================================================================
-void drawDuck() {
+void drawDuck()
+{
   drawDuckBody();
 
   // ----- Neck -----
@@ -198,7 +227,8 @@ void drawDuck() {
   drawDuckTarget();
 }
 
-void drawDuckBody() {
+void drawDuckBody()
+{
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
   glScalef(1.15f, 0.95f, 1.05f);
@@ -206,7 +236,8 @@ void drawDuckBody() {
   glPopMatrix();
 }
 
-void drawDuckTail() {
+void drawDuckTail()
+{
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
   glTranslatef(-duckConfig.bodyRadius * 0.8f, duckConfig.bodyRadius * 0.5f,
@@ -218,7 +249,8 @@ void drawDuckTail() {
   glPopMatrix();
 }
 
-void drawDuckTarget() {
+void drawDuckTarget()
+{
   // Base red flattened sphere (largest, back)
   glPushMatrix();
   glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
@@ -252,12 +284,14 @@ void drawDuckTarget() {
 // ================================================================
 // WATER & BOOTH
 // ================================================================
-void drawWaterWave(float width, int waves, float amp, float depth) {
+void drawWaterWave(float width, int waves, float amp, float depth)
+{
   const float step = 0.08f;
   const float yBottom = -depth;
   glColor3f(0.52f, 0.82f, 1.0f);
   glBegin(GL_QUAD_STRIP);
-  for (float x = -width * 0.5f; x <= width * 0.5f + 0.0001f; x += step) {
+  for (float x = -width * 0.5f; x <= width * 0.5f + 0.0001f; x += step)
+  {
     float t = (x + width * 0.5f) / width;
     float y = amp * sinf(2.0f * (float)M_PI * waves * t);
     glVertex3f(x, y, 0.0f);
@@ -266,7 +300,8 @@ void drawWaterWave(float width, int waves, float amp, float depth) {
   glEnd();
 }
 
-void drawBooth() {
+void drawBooth()
+{
   // pillar 1
   glColor3f(0.36f, 0.37f, 0.52f);
   glPushMatrix();
@@ -307,7 +342,8 @@ void drawBooth() {
 // ================================================================
 // HANDLERS
 // ================================================================
-void reshape(int w, int h) {
+void reshape(int w, int h)
+{
   glViewport(0, 0, w, h);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -315,12 +351,14 @@ void reshape(int w, int h) {
   glMatrixMode(GL_MODELVIEW);
 }
 
-void keyboard(unsigned char key, int x, int y) {
+void keyboard(unsigned char key, int x, int y)
+{
   if (key == 27)
     exit(0);
 }
 
-void animationHandler(int value) {
+void animationHandler(int value)
+{
   duckX -= 0.05f;
   if (duckX < -8.0f)
     duckX = 8.0f;
