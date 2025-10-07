@@ -210,3 +210,59 @@ void QuadMesh::ComputeNormals()
 		}
 	}
 }
+
+QuadMesh *QuadMesh::MakeUnitPanel()
+{
+	auto *m = new QuadMesh(1, 1.0f);
+	// 1x1 quad in XY, center at origin -> origin at (-0.5,-0.5,0)
+	m->InitMesh(1, Vector3(-0.5f, -0.5f, 0.0f), 1.0, 1.0, Vector3(1, 0, 0), Vector3(0, 1, 0));
+	return m;
+}
+
+void QuadMesh::DrawBoxFromPanel(QuadMesh *panel, float w, float h, float d)
+{
+	if (!panel)
+		return;
+
+	// front
+	glPushMatrix();
+	glTranslatef(0, 0, d * 0.5f);
+	glScalef(w, h, 1);
+	panel->DrawMesh(1);
+	glPopMatrix();
+	// back
+	glPushMatrix();
+	glTranslatef(0, 0, -d * 0.5f);
+	glRotatef(180, 0, 1, 0);
+	glScalef(w, h, 1);
+	panel->DrawMesh(1);
+	glPopMatrix();
+	// right
+	glPushMatrix();
+	glTranslatef(w * 0.5f, 0, 0);
+	glRotatef(90, 0, 1, 0);
+	glScalef(d, h, 1);
+	panel->DrawMesh(1);
+	glPopMatrix();
+	// left
+	glPushMatrix();
+	glTranslatef(-w * 0.5f, 0, 0);
+	glRotatef(-90, 0, 1, 0);
+	glScalef(d, h, 1);
+	panel->DrawMesh(1);
+	glPopMatrix();
+	// top
+	glPushMatrix();
+	glTranslatef(0, h * 0.5f, 0);
+	glRotatef(-90, 1, 0, 0);
+	glScalef(w, d, 1);
+	panel->DrawMesh(1);
+	glPopMatrix();
+	// bottom
+	glPushMatrix();
+	glTranslatef(0, -h * 0.5f, 0);
+	glRotatef(90, 1, 0, 0);
+	glScalef(w, d, 1);
+	panel->DrawMesh(1);
+	glPopMatrix();
+}

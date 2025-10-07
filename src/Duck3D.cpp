@@ -18,37 +18,41 @@ CubeMesh *cubeMesh = nullptr;
 QuadMesh *groundMesh = nullptr;
 int meshSize = 16;
 
-// mouse controls
+// Camera and mouse control variables
 float cameraZoom = 22.0f;
 float cameraYaw = 0.0f;
 float cameraPitch = 0.0f;
 bool leftMouseDown = false;
 bool rightMouseDown = false;
-int lastMouseY = 0;
 int lastMouseX = 0;
+int lastMouseY = 0;
 
-// Mouse handlers for camera control
+// Mouse button handler for camera control and zoom
 void mouseButton(int button, int state, int x, int y)
 {
+  // left button = zoom, right button = orbit
   if (button == GLUT_LEFT_BUTTON)
-  {
-    leftMouseDown = (state == GLUT_DOWN);
-    lastMouseY = y;
-  }
+    leftMouseDown = (state == GLUT_DOWN), lastMouseY = y;
   else if (button == GLUT_RIGHT_BUTTON)
+    rightMouseDown = (state == GLUT_DOWN), lastMouseX = x, lastMouseY = y;
+  // scroll wheel = zoom
+  else if ((button == 3 || button == 4) && state == GLUT_DOWN)
   {
-    rightMouseDown = (state == GLUT_DOWN);
-    lastMouseX = x;
-    lastMouseY = y;
+    cameraZoom += (button == 3 ? -1.0f : 1.0f);
+    if (cameraZoom < 5.0f)
+      cameraZoom = 5.0f;
+    if (cameraZoom > 60.0f)
+      cameraZoom = 60.0f;
+    glutPostRedisplay();
   }
 }
 
+// Mouse motion handler for camera orbit and zoom
 void mouseMotion(int x, int y)
 {
   if (leftMouseDown)
   {
-    int dy = y - lastMouseY;
-    cameraZoom += dy * 0.1f;
+    cameraZoom += (y - lastMouseY) * 0.1f;
     if (cameraZoom < 5.0f)
       cameraZoom = 5.0f;
     if (cameraZoom > 60.0f)
@@ -58,15 +62,13 @@ void mouseMotion(int x, int y)
   }
   else if (rightMouseDown)
   {
-    int dx = x - lastMouseX;
-    int dy = y - lastMouseY;
-    cameraYaw += dx * 0.5f;
-    cameraPitch += dy * 0.5f;
+    cameraYaw += (x - lastMouseX) * 0.5f;
+    cameraPitch += (y - lastMouseY) * 0.5f;
     if (cameraPitch > 89.0f)
       cameraPitch = 89.0f;
     if (cameraPitch < -89.0f)
       cameraPitch = -89.0f;
-    if (cameraYaw > 360.0f)
+    if (cameraYaw >= 360.0f)
       cameraYaw -= 360.0f;
     if (cameraYaw < 0.0f)
       cameraYaw += 360.0f;
@@ -170,42 +172,11 @@ void display(void)
 void drawDuck()
 {
   drawDuckBody();
-
-  // Neck
-  glPushMatrix();
-  glTranslatef(0.36f, 0.36f, 0.0f);
-  glRotatef(90.0f, 0, 1, 0);
-  glRotatef(-90.0f, 1, 0, 0);
-  glColor3f(1.0, 1.0, 0.0);
-  glutSolidCone(0.91f, 1.3f, 20, 12);
-  glPopMatrix();
-
-  // Head
-  glPushMatrix();
-  glTranslatef(0.48f, 1.68f, 0.0f);
-  glColor3f(1.0, 1.0, 0.0);
-  glutSolidSphere(0.65f, 28, 28);
-  glPopMatrix();
-
-  // Eye
-  glPushMatrix();
-  glTranslatef(0.72f, 1.92f, 0.5f);
-  glColor3f(0.0, 0.0, 0.0);
-  glutSolidSphere(0.117f, 16, 16);
-  glPopMatrix();
-
-  // Beak
-  glPushMatrix();
-  glTranslatef(1.08f, 1.68f, 0.0f);
-  glRotatef(90, 0, 1, 0);
-  glColor3f(1.0, 0.25, 0.0);
-  glutSolidCone(0.18f, 0.42f, 20, 12);
-  glPopMatrix();
-
-  // Tail
+  drawDuckNeck();
+  drawDuckHead();
+  drawDuckEyes();
+  drawDuckBeak();
   drawDuckTail();
-
-  // Target
   drawDuckTarget();
 }
 
@@ -215,6 +186,53 @@ void drawDuckBody()
   glColor3f(1.0, 1.0, 0.0);
   glScalef(1.15f, 0.95f, 1.05f);
   glutSolidSphere(1.2f, 30, 30);
+  glPopMatrix();
+}
+
+void drawDuckNeck()
+{
+  glPushMatrix();
+  glTranslatef(0.36f, 0.36f, 0.0f);
+  glRotatef(90.0f, 0, 1, 0);
+  glRotatef(-90.0f, 1, 0, 0);
+  glColor3f(1.0, 1.0, 0.0);
+  glutSolidCone(0.91f, 1.3f, 20, 12);
+  glPopMatrix();
+}
+
+void drawDuckHead()
+{
+  glPushMatrix();
+  glTranslatef(0.48f, 1.68f, 0.0f);
+  glColor3f(1.0, 1.0, 0.0);
+  glutSolidSphere(0.65f, 28, 28);
+  glPopMatrix();
+}
+
+void drawDuckEyes()
+{
+  // Right eye
+  glPushMatrix();
+  glTranslatef(0.72f, 1.92f, 0.5f);
+  glColor3f(0.0, 0.0, 0.0);
+  glutSolidSphere(0.117f, 16, 16);
+  glPopMatrix();
+
+  // Left eye (opposite side)
+  glPushMatrix();
+  glTranslatef(0.72f, 1.92f, -0.5f);
+  glColor3f(0.0, 0.0, 0.0);
+  glutSolidSphere(0.117f, 16, 16);
+  glPopMatrix();
+}
+
+void drawDuckBeak()
+{
+  glPushMatrix();
+  glTranslatef(1.08f, 1.68f, 0.0f);
+  glRotatef(90, 0, 1, 0);
+  glColor3f(1.0, 0.25, 0.0);
+  glutSolidCone(0.18f, 0.42f, 20, 12);
   glPopMatrix();
 }
 
