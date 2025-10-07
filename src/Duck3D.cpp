@@ -1,5 +1,5 @@
 /*******************************************************************
-                   Hierarchical Duck Target Example
+ Hierarchical Duck Target Example
 ********************************************************************/
 #include "Duck.h"
 #include <cmath>
@@ -11,15 +11,6 @@ const int vHeight = 500;
 #define M_PI 3.14159265358979323846
 #endif
 
-DuckConfig duckConfig = {
-    1.2f,  // body radius
-    0.65f, // head radius
-    0.18f, // beak radius
-    0.42f, // beak length
-    3.8f,  // stand height
-    0.18f  // stand radius
-};
-
 float duckX = 8.0f;
 float duckAngle = 0.0f;
 
@@ -29,8 +20,8 @@ int meshSize = 16;
 
 // mouse controls
 float cameraZoom = 22.0f;
-float cameraYaw = 0.0f;   // horizontal angle, in degrees
-float cameraPitch = 0.0f; // vertical angle, in degrees
+float cameraYaw = 0.0f;
+float cameraPitch = 0.0f;
 bool leftMouseDown = false;
 bool rightMouseDown = false;
 int lastMouseY = 0;
@@ -71,12 +62,10 @@ void mouseMotion(int x, int y)
     int dy = y - lastMouseY;
     cameraYaw += dx * 0.5f;
     cameraPitch += dy * 0.5f;
-    // Clamp pitch to avoid flipping
     if (cameraPitch > 89.0f)
       cameraPitch = 89.0f;
     if (cameraPitch < -89.0f)
       cameraPitch = -89.0f;
-    // Wrap yaw for 360 degrees
     if (cameraYaw > 360.0f)
       cameraYaw -= 360.0f;
     if (cameraYaw < 0.0f)
@@ -87,9 +76,7 @@ void mouseMotion(int x, int y)
   }
 }
 
-// ================================================================
 // MAIN
-// ================================================================
 int main(int argc, char **argv)
 {
   glutInit(&argc, argv);
@@ -109,9 +96,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-// ================================================================
 // INIT
-// ================================================================
 void initOpenGL(int w, int h)
 {
   GLfloat light_pos[] = {-4.0f, 8.0f, 8.0f, 1.0f};
@@ -142,9 +127,7 @@ void initOpenGL(int w, int h)
   groundMesh->InitMesh(meshSize, origin, 32.0, 32.0, dir1, dir2);
 }
 
-// ================================================================
 // DISPLAY
-// ================================================================
 void display(void)
 {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -154,9 +137,9 @@ void display(void)
   float camY = cameraZoom * -sinf(cameraPitch * M_PI / 180.0f) + 3.0f;
   float camZ = cameraZoom * cosf(cameraYaw * M_PI / 180.0f) * cosf(cameraPitch * M_PI / 180.0f);
 
-  gluLookAt(camX, camY, camZ, // Camera position
-            0.0, 3.0, 0.0,    // Look at the center of the scene
-            0.0, 1.0, 0.0);   // Up vector
+  gluLookAt(camX, camY, camZ,
+            0.0, 3.0, 0.0,
+            0.0, 1.0, 0.0);
 
   glutMouseFunc(mouseButton);
   glutMotionFunc(mouseMotion);
@@ -177,53 +160,52 @@ void display(void)
   glutSwapBuffers();
 }
 
-// ================================================================
 // DUCK
-// ================================================================
+// glTranslatef(x, y, z): Moves the current matrix by x, y, z units.
+// glRotatef(angle, x, y, z): Rotates by 'angle' degrees around the vector (x, y, z).
+// glScalef(x, y, z): Scales the current matrix by x, y, z factors.
+// glutSolidSphere(radius, slices, stacks): Draws a solid sphere.
+// glutSolidCone(base, height, slices, stacks): Draws a solid cone.
+
 void drawDuck()
 {
   drawDuckBody();
 
-  // ----- Neck -----
+  // Neck
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.3f, duckConfig.bodyRadius * 0.3f,
-               0.0f);
+  glTranslatef(0.36f, 0.36f, 0.0f);
   glRotatef(90.0f, 0, 1, 0);
   glRotatef(-90.0f, 1, 0, 0);
   glColor3f(1.0, 1.0, 0.0);
-  glutSolidCone(duckConfig.headRadius * 1.4f, duckConfig.headRadius * 2.0f, 20,
-                12);
+  glutSolidCone(0.91f, 1.3f, 20, 12);
   glPopMatrix();
 
-  // ----- Head -----
+  // Head
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.4f, duckConfig.bodyRadius * 1.4f,
-               0.0f);
+  glTranslatef(0.48f, 1.68f, 0.0f);
   glColor3f(1.0, 1.0, 0.0);
-  glutSolidSphere(duckConfig.headRadius, 28, 28);
+  glutSolidSphere(0.65f, 28, 28);
   glPopMatrix();
 
-  // ----- Eye -----
+  // Eye
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.6f, duckConfig.bodyRadius * 1.6f,
-               0.5f);
+  glTranslatef(0.72f, 1.92f, 0.5f);
   glColor3f(0.0, 0.0, 0.0);
-  glutSolidSphere(duckConfig.headRadius * 0.18f, 16, 16);
+  glutSolidSphere(0.117f, 16, 16);
   glPopMatrix();
 
-  // ----- Beak -----
+  // Beak
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.9f, duckConfig.bodyRadius * 1.4f,
-               0.0f);
+  glTranslatef(1.08f, 1.68f, 0.0f);
   glRotatef(90, 0, 1, 0);
   glColor3f(1.0, 0.25, 0.0);
-  glutSolidCone(duckConfig.beakRadius, duckConfig.beakLength, 20, 12);
+  glutSolidCone(0.18f, 0.42f, 20, 12);
   glPopMatrix();
 
-  // ----- Tail (points backward, opposite of beak) -----
+  // Tail
   drawDuckTail();
 
-  // ----- Target -----
+  // Target
   drawDuckTarget();
 }
 
@@ -232,7 +214,7 @@ void drawDuckBody()
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
   glScalef(1.15f, 0.95f, 1.05f);
-  glutSolidSphere(duckConfig.bodyRadius, 30, 30);
+  glutSolidSphere(1.2f, 30, 30);
   glPopMatrix();
 }
 
@@ -240,50 +222,41 @@ void drawDuckTail()
 {
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
-  glTranslatef(-duckConfig.bodyRadius * 0.8f, duckConfig.bodyRadius * 0.5f,
-               0.0f);
+  glTranslatef(-0.96f, 0.6f, 0.0f);
   glRotatef(-90, 0, 1, 0);
   glRotatef(-45, 1, 0, 0);
-  glutSolidCone(duckConfig.headRadius * 1.0f, duckConfig.headRadius * 1.8f, 20,
-                12);
+  glutSolidCone(0.65f, 1.17f, 20, 12);
   glPopMatrix();
 }
 
 void drawDuckTarget()
 {
-  // Base red flattened sphere (largest, back)
+  // Base red flattened sphere
   glPushMatrix();
-  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
-               duckConfig.bodyRadius * 0.95f);
+  glTranslatef(0.0f, -0.18f, 1.14f);
   glScalef(0.22f, 0.22f, 0.06f);
   glColor3f(1.0, 0.0, 0.0);
   glutSolidSphere(4.0, 30, 30);
   glPopMatrix();
 
-  // White flattened sphere (smaller, slightly in front)
+  // White flattened sphere
   glPushMatrix();
-  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
-               duckConfig.bodyRadius * 1.05f);
+  glTranslatef(0.0f, -0.18f, 1.26f);
   glScalef(0.22f, 0.22f, 0.06f);
   glColor3f(1.0, 1.0, 1.0);
   glutSolidSphere(3.0, 30, 30);
   glPopMatrix();
 
-  // // Red flattened sphere (smallest, more in front)
+  // Red flattened sphere
   glPushMatrix();
-  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
-               duckConfig.bodyRadius * 1.15f);
+  glTranslatef(0.0f, -0.18f, 1.38f);
   glScalef(0.22f, 0.22f, 0.06f);
   glColor3f(1.0, 0.0, 0.0);
   glutSolidSphere(2.0, 30, 30);
   glPopMatrix();
-
-  glPopMatrix();
 }
 
-// ================================================================
 // WATER & BOOTH
-// ================================================================
 void drawWaterWave(float width, int waves, float amp, float depth)
 {
   const float step = 0.08f;
@@ -339,9 +312,7 @@ void drawBooth()
   glPopMatrix();
 }
 
-// ================================================================
 // HANDLERS
-// ================================================================
 void reshape(int w, int h)
 {
   glViewport(0, 0, w, h);
