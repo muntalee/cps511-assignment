@@ -74,9 +74,13 @@ elseif (APPLE)
     )
     add_definitions(-DGL_SILENCE_DEPRECATION)
 else()
+    find_package(OpenGL REQUIRED)
     target_link_libraries(${OUT}
         PRIVATE
             freeglut_static
+            OpenGL::GL
+            OpenGL::GLU
+            m
+            X11 Xrandr Xi Xxf86vm GLX OpenGL
     )
 endif()
-

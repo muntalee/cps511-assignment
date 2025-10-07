@@ -27,11 +27,51 @@ CubeMesh *cubeMesh = nullptr;
 QuadMesh *groundMesh = nullptr;
 int meshSize = 16;
 
+// mouse controls
+float cameraZoom = 22.0f;
+float cameraPan = 0.0f;
+bool leftMouseDown = false;
+bool rightMouseDown = false;
+int lastMouseY = 0;
+int lastMouseX = 0;
+
+// Mouse handlers for camera control
+void mouseButton(int button, int state, int x, int y) {
+  if (button == GLUT_LEFT_BUTTON) {
+    leftMouseDown = (state == GLUT_DOWN);
+    lastMouseY = y;
+  } else if (button == GLUT_RIGHT_BUTTON) {
+    rightMouseDown = (state == GLUT_DOWN);
+    lastMouseX = x;
+  }
+}
+
+void mouseMotion(int x, int y) {
+  if (leftMouseDown) {
+    int dy = y - lastMouseY;
+    cameraZoom += dy * 0.1f;
+    if (cameraZoom < 5.0f)
+      cameraZoom = 5.0f;
+    if (cameraZoom > 60.0f)
+      cameraZoom = 60.0f;
+    lastMouseY = y;
+    glutPostRedisplay();
+  } else if (rightMouseDown) {
+    int dx = x - lastMouseX;
+    cameraPan += dx * 0.1f;
+    if (cameraPan < -10.0f)
+      cameraPan = -10.0f;
+    if (cameraPan > 10.0f)
+      cameraPan = 10.0f;
+    lastMouseX = x;
+    glutPostRedisplay();
+  }
+}
+
 // ================================================================
 // MAIN
 // ================================================================
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutInitWindowSize(vWidth, vHeight);
@@ -52,8 +92,7 @@ int main(int argc, char **argv)
 // ================================================================
 // INIT
 // ================================================================
-void initOpenGL(int w, int h)
-{
+void initOpenGL(int w, int h) {
   GLfloat light_pos[] = {-4.0f, 8.0f, 8.0f, 1.0f};
   GLfloat light_diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
   GLfloat light_specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -85,12 +124,14 @@ void initOpenGL(int w, int h)
 // ================================================================
 // DISPLAY
 // ================================================================
-void display(void)
-{
+void display(void) {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glLoadIdentity();
-  gluLookAt(0.0, 6.0, 22.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
+  gluLookAt(cameraPan, 3.0, cameraZoom, cameraPan, 3.0, 0.0, 0.0, 1.0, 0.0);
+
+  glutMouseFunc(mouseButton);
+  glutMotionFunc(mouseMotion);
 
   drawBooth();
 
@@ -111,29 +152,40 @@ void display(void)
 // ================================================================
 // DUCK
 // ================================================================
-void drawDuck()
-{
+void drawDuck() {
   drawDuckBody();
 
   // ----- Neck -----
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.3f, duckConfig.bodyRadius * 0.3f, 0.0f);
+  glTranslatef(duckConfig.bodyRadius * 0.3f, duckConfig.bodyRadius * 0.3f,
+               0.0f);
   glRotatef(90.0f, 0, 1, 0);
   glRotatef(-90.0f, 1, 0, 0);
   glColor3f(1.0, 1.0, 0.0);
-  glutSolidCone(duckConfig.headRadius * 1.4f, duckConfig.headRadius * 2.0f, 20, 12);
+  glutSolidCone(duckConfig.headRadius * 1.4f, duckConfig.headRadius * 2.0f, 20,
+                12);
   glPopMatrix();
 
   // ----- Head -----
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.4f, duckConfig.bodyRadius * 1.4f, 0.0f);
+  glTranslatef(duckConfig.bodyRadius * 0.4f, duckConfig.bodyRadius * 1.4f,
+               0.0f);
   glColor3f(1.0, 1.0, 0.0);
   glutSolidSphere(duckConfig.headRadius, 28, 28);
   glPopMatrix();
 
+  // ----- Eye -----
+  glPushMatrix();
+  glTranslatef(duckConfig.bodyRadius * 0.6f, duckConfig.bodyRadius * 1.6f,
+               0.5f);
+  glColor3f(0.0, 0.0, 0.0);
+  glutSolidSphere(duckConfig.headRadius * 0.18f, 16, 16);
+  glPopMatrix();
+
   // ----- Beak -----
   glPushMatrix();
-  glTranslatef(duckConfig.bodyRadius * 0.9f, duckConfig.bodyRadius * 1.4f, 0.0f);
+  glTranslatef(duckConfig.bodyRadius * 0.9f, duckConfig.bodyRadius * 1.4f,
+               0.0f);
   glRotatef(90, 0, 1, 0);
   glColor3f(1.0, 0.25, 0.0);
   glutSolidCone(duckConfig.beakRadius, duckConfig.beakLength, 20, 12);
@@ -146,8 +198,7 @@ void drawDuck()
   drawDuckTarget();
 }
 
-void drawDuckBody()
-{
+void drawDuckBody() {
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
   glScalef(1.15f, 0.95f, 1.05f);
@@ -155,41 +206,45 @@ void drawDuckBody()
   glPopMatrix();
 }
 
-void drawDuckTail()
-{
+void drawDuckTail() {
   glPushMatrix();
   glColor3f(1.0, 1.0, 0.0);
-  glTranslatef(-duckConfig.bodyRadius * 0.8f, duckConfig.bodyRadius * 0.5f, 0.0f);
+  glTranslatef(-duckConfig.bodyRadius * 0.8f, duckConfig.bodyRadius * 0.5f,
+               0.0f);
   glRotatef(-90, 0, 1, 0);
   glRotatef(-45, 1, 0, 0);
-  glutSolidCone(duckConfig.headRadius * 1.0f, duckConfig.headRadius * 1.8f, 20, 12);
+  glutSolidCone(duckConfig.headRadius * 1.0f, duckConfig.headRadius * 1.8f, 20,
+                12);
   glPopMatrix();
 }
 
-void drawDuckTarget()
-{
+void drawDuckTarget() {
   // Base red flattened sphere (largest, back)
-  // glPushMatrix();
-  // glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f, duckConfig.bodyRadius * 0.95f);
-  // glScalef(0.22f, 0.22f, 0.06f);
-  // glColor3f(1.0, 0.0, 0.0);
-  // glutSolidSphere(4.0, 30, 30);
-  // glPopMatrix();
-
-  // White flattened sphere (smaller, slightly in front)
   glPushMatrix();
-  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f, duckConfig.bodyRadius * 0.95f);
+  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
+               duckConfig.bodyRadius * 0.95f);
   glScalef(0.22f, 0.22f, 0.06f);
   glColor3f(1.0, 0.0, 0.0);
   glutSolidSphere(4.0, 30, 30);
   glPopMatrix();
 
+  // White flattened sphere (smaller, slightly in front)
+  glPushMatrix();
+  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
+               duckConfig.bodyRadius * 1.05f);
+  glScalef(0.22f, 0.22f, 0.06f);
+  glColor3f(1.0, 1.0, 1.0);
+  glutSolidSphere(3.0, 30, 30);
+  glPopMatrix();
+
   // // Red flattened sphere (smallest, more in front)
-  // glPushMatrix();
-  // glTranslatef(0.0f, 0.0f, 0.32f); // push further forward
-  // glColor3f(1.0, 0.0, 0.0);
-  // glutSolidSphere(1.2, 30, 30);
-  // glPopMatrix();
+  glPushMatrix();
+  glTranslatef(0.0f, -duckConfig.bodyRadius * 0.15f,
+               duckConfig.bodyRadius * 1.15f);
+  glScalef(0.22f, 0.22f, 0.06f);
+  glColor3f(1.0, 0.0, 0.0);
+  glutSolidSphere(2.0, 30, 30);
+  glPopMatrix();
 
   glPopMatrix();
 }
@@ -197,14 +252,12 @@ void drawDuckTarget()
 // ================================================================
 // WATER & BOOTH
 // ================================================================
-void drawWaterWave(float width, int waves, float amp, float depth)
-{
+void drawWaterWave(float width, int waves, float amp, float depth) {
   const float step = 0.08f;
   const float yBottom = -depth;
   glColor3f(0.52f, 0.82f, 1.0f);
   glBegin(GL_QUAD_STRIP);
-  for (float x = -width * 0.5f; x <= width * 0.5f + 0.0001f; x += step)
-  {
+  for (float x = -width * 0.5f; x <= width * 0.5f + 0.0001f; x += step) {
     float t = (x + width * 0.5f) / width;
     float y = amp * sinf(2.0f * (float)M_PI * waves * t);
     glVertex3f(x, y, 0.0f);
@@ -213,8 +266,7 @@ void drawWaterWave(float width, int waves, float amp, float depth)
   glEnd();
 }
 
-void drawBooth()
-{
+void drawBooth() {
   // pillar 1
   glColor3f(0.36f, 0.37f, 0.52f);
   glPushMatrix();
@@ -255,8 +307,7 @@ void drawBooth()
 // ================================================================
 // HANDLERS
 // ================================================================
-void reshape(int w, int h)
-{
+void reshape(int w, int h) {
   glViewport(0, 0, w, h);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -264,14 +315,12 @@ void reshape(int w, int h)
   glMatrixMode(GL_MODELVIEW);
 }
 
-void keyboard(unsigned char key, int x, int y)
-{
+void keyboard(unsigned char key, int x, int y) {
   if (key == 27)
     exit(0);
 }
 
-void animationHandler(int value)
-{
+void animationHandler(int value) {
   duckX -= 0.05f;
   if (duckX < -8.0f)
     duckX = 8.0f;
