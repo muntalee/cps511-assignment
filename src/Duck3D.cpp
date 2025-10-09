@@ -1,6 +1,3 @@
-/*******************************************************************
- Hierarchical Duck Target Example
-********************************************************************/
 #include "Duck.h"
 #include <cmath>
 
@@ -11,7 +8,15 @@ const int vHeight = 500;
 #define M_PI 3.14159265358979323846
 #endif
 
-float duckX = 8.0f;
+// Camera & state
+struct DuckPosition
+{
+  float x = 8.0f;
+  float y = 1.0f;
+  float z = 0.0f;
+};
+
+DuckPosition duckPos;
 float duckAngle = 0.0f;
 
 CubeMesh *cubeMesh = nullptr;
@@ -19,7 +24,6 @@ QuadMesh *groundMesh = nullptr;
 QuadMesh *panelMesh = nullptr;
 int meshSize = 16;
 
-// Camera and mouse control variables
 float cameraZoom = 22.0f;
 float cameraYaw = 0.0f;
 float cameraPitch = 0.0f;
@@ -28,16 +32,18 @@ bool rightMouseDown = false;
 int lastMouseX = 0;
 int lastMouseY = 0;
 
+// Global scene params
+WaveParams gWave;
+BoothLayout gBooth;
+
 // Mouse button handler for camera orbit (left) and zoom (right)
 void mouseButton(int button, int state, int x, int y)
 {
-  // left button = orbit, right button = zoom
   if (button == GLUT_LEFT_BUTTON)
     leftMouseDown = (state == GLUT_DOWN), lastMouseX = x, lastMouseY = y;
   else if (button == GLUT_RIGHT_BUTTON)
     rightMouseDown = (state == GLUT_DOWN), lastMouseY = y;
-  // scroll wheel = zoom
-  else if ((button == 3 || button == 4) && state == GLUT_DOWN)
+  else if ((button == 3 || button == 4) && state == GLUT_DOWN) // scroll wheel
   {
     cameraZoom += (button == 3 ? -1.0f : 1.0f);
     if (cameraZoom < 5.0f)
@@ -77,6 +83,54 @@ void mouseMotion(int x, int y)
     lastMouseY = y;
     glutPostRedisplay();
   }
+}
+
+// Compute all booth dimensions + wave parameters once
+void setupSceneParams()
+{
+  // A single, human-readable "scale knob"
+  gBooth.duckBodyR = 1.2f;
+
+  // Opening geometry
+  gBooth.openW = gBooth.duckBodyR * 16.0f;
+  gBooth.openH = gBooth.duckBodyR * 7.0f;
+
+  // Base
+  gBooth.baseH = gBooth.duckBodyR * 2.8f;
+  gBooth.baseCenterY = -3.25f;
+  gBooth.baseTopY = gBooth.baseCenterY + gBooth.baseH * 0.5f;
+  gBooth.groundY = gBooth.baseCenterY - gBooth.baseH * 0.5f;
+
+  // Pillars
+  gBooth.pillarW = gBooth.duckBodyR * 1.6f;
+  const float halfOpenW = gBooth.openW * 0.5f;
+  gBooth.pillarX = halfOpenW + gBooth.pillarW * 0.5f;
+  gBooth.pillarsOuterHalf = gBooth.pillarX + gBooth.pillarW * 0.5f;
+
+  // Base footprint vs wave clearance
+  const float waveSideClear = gBooth.duckBodyR * 0.4f;
+  gBooth.baseW = gBooth.openW - 2.0f * waveSideClear;
+  gBooth.baseDepth = gBooth.pillarW * 1.4f;
+
+  // Top beam
+  gBooth.beamH = gBooth.duckBodyR * 1.8f;
+  gBooth.beamOverhang = gBooth.duckBodyR * 1.0f;
+  gBooth.beamUndersideY = gBooth.baseTopY + gBooth.openH;
+  gBooth.beamTopY = gBooth.beamUndersideY + gBooth.beamH;
+  gBooth.pillarH = gBooth.beamTopY - gBooth.groundY - 0.01f;
+  gBooth.pillarCenterY = (gBooth.beamTopY + gBooth.groundY) * 0.5f;
+  gBooth.beamW = (gBooth.pillarsOuterHalf + gBooth.beamOverhang) * 2.0f;
+  gBooth.beamCenterY = gBooth.beamUndersideY + gBooth.beamH * 0.5f;
+
+  // Wave
+  gWave.width = gBooth.baseW;
+  gWave.waves = 6;
+  gWave.amp = gBooth.duckBodyR * 0.72f;
+  gWave.lift = gWave.amp + 0.001f;
+  gWave.thickZ = gBooth.baseDepth * 0.4f;
+  gWave.baseY = -0.001f;
+  gWave.x0 = -gWave.width * 0.5f; // left of base
+  gWave.x1 = gWave.width * 0.5f;  // right of base
 }
 
 // MAIN
@@ -130,8 +184,11 @@ void initOpenGL(int w, int h)
   groundMesh = new QuadMesh(meshSize, 32.0f);
   groundMesh->InitMesh(meshSize, origin, 32.0, 32.0, dir1, dir2);
 
-  // Create the reusable unit panel (1x1 in XY, centered at origin)
+  // Reusable unit panel (1x1 in XY, centered at origin)
   panelMesh = QuadMesh::MakeUnitPanel();
+
+  // Compute shared scene parameters once
+  setupSceneParams();
 }
 
 // DISPLAY
@@ -154,7 +211,7 @@ void display(void)
   drawBooth();
 
   glPushMatrix();
-  glTranslatef(duckX, 1.0, 0.0);
+  glTranslatef(duckPos.x, duckPos.y, duckPos.z);
   drawDuck();
   glPopMatrix();
 
@@ -168,12 +225,6 @@ void display(void)
 }
 
 // DUCK
-// glTranslatef(x, y, z): Moves the current matrix by x, y, z units.
-// glRotatef(angle, x, y, z): Rotates by 'angle' degrees around the vector (x, y, z).
-// glScalef(x, y, z): Scales the current matrix by x, y, z factors.
-// glutSolidSphere(radius, slices, stacks): Draws a solid sphere.
-// glutSolidCone(base, height, slices, stacks): Draws a solid cone.
-
 void drawDuck()
 {
   drawDuckBody();
@@ -279,159 +330,114 @@ void drawDuckTarget()
   glPopMatrix();
 }
 
-// Wave
-void drawWaterWave3D(float width, int waves, float amp, float lift, float thicknessZ)
+// Global wave helpers
+float waveYAt(float x)
 {
-  const float halfT = thicknessZ * 0.5f;
+  // map x into t∈[0,1] across [x0,x1]
+  const float t = (x - gWave.x0) / (gWave.x1 - gWave.x0);
+  // sine with 'waves' full cycles across the width
+  return gWave.lift + gWave.amp * sinf(2.f * (float)M_PI * gWave.waves * t);
+}
+
+// Wave geometry
+void drawWaterWave3D()
+{
+  const float halfT = gWave.thickZ * 0.5f;
   const float step = 0.08f;
-  const float x0 = -width * 0.5f;
-  const float x1 = width * 0.5f;
-
-  // Baseline: exactly 0 (tiny epsilon keeps faces well-ordered)
-  const float yBase = -0.001f;
-
-  auto yCurve = [&](float x)
-  {
-    float t = (x - x0) / width; // 0..1
-    return lift + amp * sinf(2.f * (float)M_PI * waves * t);
-  };
 
   // Crest surface
-  // colors: #a9e1f8
-  glColor3f(0.663f, 0.882f, 0.973f);
+  glColor3f(0.663f, 0.882f, 0.973f); // #a9e1f8
   glBegin(GL_TRIANGLE_STRIP);
-  for (float x = x0; x <= x1 + 1e-4f; x += step)
+  for (float x = gWave.x0; x <= gWave.x1 + 1e-4f; x += step)
   {
-    float y = yCurve(x);
+    float y = waveYAt(x);
     glVertex3f(x, y, halfT);
     glVertex3f(x, y, -halfT);
   }
   glEnd();
 
-  // Front face
+  // Front face (filled down to base)
   glBegin(GL_QUAD_STRIP);
-  for (float x = x0; x <= x1 + 1e-4f; x += step)
+  for (float x = gWave.x0; x <= gWave.x1 + 1e-4f; x += step)
   {
-    float y = yCurve(x);
+    float y = waveYAt(x);
     glVertex3f(x, y, halfT);
-    glVertex3f(x, yBase, halfT);
+    glVertex3f(x, gWave.baseY, halfT);
   }
   glEnd();
 
   // Back face
   glBegin(GL_QUAD_STRIP);
-  for (float x = x0; x <= x1 + 1e-4f; x += step)
+  for (float x = gWave.x0; x <= gWave.x1 + 1e-4f; x += step)
   {
-    float y = yCurve(x);
+    float y = waveYAt(x);
     glVertex3f(x, y, -halfT);
-    glVertex3f(x, yBase, -halfT);
+    glVertex3f(x, gWave.baseY, -halfT);
   }
   glEnd();
 
   // Bottom
   glBegin(GL_QUADS);
-  glVertex3f(x0, yBase, halfT);
-  glVertex3f(x1, yBase, halfT);
-  glVertex3f(x1, yBase, -halfT);
-  glVertex3f(x0, yBase, -halfT);
+  glVertex3f(gWave.x0, gWave.baseY, halfT);
+  glVertex3f(gWave.x1, gWave.baseY, halfT);
+  glVertex3f(gWave.x1, gWave.baseY, -halfT);
+  glVertex3f(gWave.x0, gWave.baseY, -halfT);
   glEnd();
 
   // End caps
-  float yL = yCurve(x0), yR = yCurve(x1);
+  float yL = waveYAt(gWave.x0), yR = waveYAt(gWave.x1);
   glBegin(GL_QUADS); // left
-  glVertex3f(x0, yBase, halfT);
-  glVertex3f(x0, yL, halfT);
-  glVertex3f(x0, yL, -halfT);
-  glVertex3f(x0, yBase, -halfT);
+  glVertex3f(gWave.x0, gWave.baseY, halfT);
+  glVertex3f(gWave.x0, yL, halfT);
+  glVertex3f(gWave.x0, yL, -halfT);
+  glVertex3f(gWave.x0, gWave.baseY, -halfT);
   glEnd();
+
   glBegin(GL_QUADS); // right
-  glVertex3f(x1, yBase, -halfT);
-  glVertex3f(x1, yR, -halfT);
-  glVertex3f(x1, yR, halfT);
-  glVertex3f(x1, yBase, halfT);
+  glVertex3f(gWave.x1, gWave.baseY, -halfT);
+  glVertex3f(gWave.x1, yR, -halfT);
+  glVertex3f(gWave.x1, yR, halfT);
+  glVertex3f(gWave.x1, gWave.baseY, halfT);
   glEnd();
 }
 
+// Booth & wave drawing
 void drawBooth()
 {
-  // duck's radius
-  const float DUCK_BODY_R = 1.2f;
-
-  // booth opening
-  const float OPEN_W = DUCK_BODY_R * 16.0f; // width between pillars
-  const float OPEN_H = DUCK_BODY_R * 7.0f;  // height from base to beam
-  const int WAVES = 5;
-
   // colors
-  // pillars/base: #727181
-  const float colPillars[3] = {0.447f, 0.443f, 0.506f};
-  // top beam: #897777
-  const float colBeam[3] = {0.537f, 0.467f, 0.467f};
+  const float colPillars[3] = {0.447f, 0.443f, 0.506f}; // #727181
+  const float colBeam[3] = {0.537f, 0.467f, 0.467f};    // #897777
 
-  // base
-  const float baseH = DUCK_BODY_R * 2.8f;
-  const float baseCenterY = -3.25f;
-  const float baseTopY = baseCenterY + baseH * 0.5f;
-  const float groundY = baseCenterY - baseH * 0.5f;
-
-  // pillars
-  const float pillarW = DUCK_BODY_R * 1.6f;
-  const float halfOpenW = OPEN_W * 0.5f;
-  const float pillarX = halfOpenW + pillarW * 0.5f;
-
-  // base width/depth
-  const float baseOverhang = DUCK_BODY_R * 1.0f;
-  const float pillarsOuterHalf = pillarX + pillarW * 0.5f;
-  const float waveSideClear = DUCK_BODY_R * 0.4f;
-  const float baseW = OPEN_W - 2.0f * waveSideClear;
-  const float baseDepth = pillarW * 1.4f;
-
-  // drawing base
+  // Base
   glColor3fv(colPillars);
   glPushMatrix();
-  glTranslatef(0.0f, baseCenterY, 0.0f);
-  QuadMesh::DrawBoxFromPanel(panelMesh, baseW, baseH, baseDepth);
+  glTranslatef(0.0f, gBooth.baseCenterY, 0.0f);
+  QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.baseW, gBooth.baseH, gBooth.baseDepth);
   glPopMatrix();
 
-  // pillar values
-  const float beamH = DUCK_BODY_R * 1.8f;
-  const float beamOverhang = DUCK_BODY_R * 1.0f;
-  const float beamUndersideY = baseTopY + OPEN_H;
-  const float beamTopY = beamUndersideY + beamH;
-  const float pillarH = beamTopY - groundY - 0.01f; // slight gap to avoid z-fighting
-  const float pillarCenterY = (beamTopY + groundY) * 0.5f;
-
-  // draw left pillar
+  // Pillars
   glColor3fv(colPillars);
   glPushMatrix();
-  glTranslatef(-pillarX, pillarCenterY, 0.0f);
-  QuadMesh::DrawBoxFromPanel(panelMesh, pillarW, pillarH, pillarW);
+  glTranslatef(-gBooth.pillarX, gBooth.pillarCenterY, 0.0f);
+  QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.pillarW, gBooth.pillarH, gBooth.pillarW);
   glPopMatrix();
 
-  // draw right pillar
   glPushMatrix();
-  glTranslatef(pillarX, pillarCenterY, 0.0f);
-  QuadMesh::DrawBoxFromPanel(panelMesh, pillarW, pillarH, pillarW);
+  glTranslatef(gBooth.pillarX, gBooth.pillarCenterY, 0.0f);
+  QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.pillarW, gBooth.pillarH, gBooth.pillarW);
   glPopMatrix();
 
-  // draw top beam
-  const float beamW = (pillarsOuterHalf + beamOverhang) * 2.0f;
-  const float beamCenterY = beamUndersideY + beamH * 0.5f;
-
+  // Top beam
   glColor3fv(colBeam);
   glPushMatrix();
-  glTranslatef(0.0f, beamCenterY, 0.0f);
-  QuadMesh::DrawBoxFromPanel(panelMesh, beamW, beamH, DUCK_BODY_R * 1.8f);
+  glTranslatef(0.0f, gBooth.beamCenterY, 0.0f);
+  QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.beamW, gBooth.beamH, gBooth.duckBodyR * 1.8f);
   glPopMatrix();
 
-  // water wave
-  const float waveThickZ = baseDepth * 0.4f;
-  const float amp = DUCK_BODY_R * 0.85f;
-  const float lift = amp + 0.001f;
-
+  // Water wave (sits on base top)
   glPushMatrix();
-  glTranslatef(0.0f, baseTopY, 0.0f); // place wave on top of base
-  drawWaterWave3D(baseW, WAVES, amp, lift, waveThickZ);
+  glTranslatef(0.0f, gBooth.baseTopY, 0.0f);
+  drawWaterWave3D();
   glPopMatrix();
 }
 
@@ -451,11 +457,16 @@ void keyboard(unsigned char key, int x, int y)
     exit(0);
 }
 
+// Single source of truth for wave used here (no duplication)
 void animationHandler(int value)
 {
-  duckX -= 0.05f;
-  if (duckX < -8.0f)
-    duckX = 8.0f;
+  // Move duck left -> right across the full wave span
+  duckPos.x -= 0.05f;
+  if (duckPos.x < gWave.x0)
+    duckPos.x = gWave.x1;
+
+  // Place duck on the crest (slightly sunk for aesthetics)
+  duckPos.y = waveYAt(duckPos.x) - 0.10f;
 
   glutPostRedisplay();
   glutTimerFunc(16, animationHandler, 0);
