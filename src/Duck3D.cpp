@@ -8,16 +8,37 @@ const int vHeight = 500;
 #define M_PI 3.14159265358979323846
 #endif
 
-// Camera & state
+// camera & state
 struct DuckPosition
 {
   float x = 8.0f;
   float y = 1.0f;
   float z = 0.0f;
 };
-
 DuckPosition duckPos;
-float duckAngle = 0.0f;
+
+// animation state
+enum DuckState
+{
+  FORWARD,
+  TURN_AT_RIGHT,
+  BACKWARD,
+  TURN_AT_LEFT
+};
+DuckState duckState = FORWARD;
+
+// positive z-rotation is ccw in opengl; -1 makes it clockwise (your requirement)
+const int ROT_DIR = -1;
+
+// angles & speeds
+float duckSpinDeg = 0.0f;      // 0..180 during right turn, 180..360 (normalized) on left
+const float moveSpeed = 0.05f; // linear travel speed
+const float spinSpeed = 3.0f;  // degrees per frame during the turns
+
+// turn geometry (computed on state entry)
+float turnRadius = 0.0f; // how wide/tall the loop is
+float turnPivotX = 0.0f; // pivot x for the current turn
+float turnPivotY = 0.0f; // pivot y for the current turn
 
 CubeMesh *cubeMesh = nullptr;
 QuadMesh *groundMesh = nullptr;
@@ -32,11 +53,11 @@ bool rightMouseDown = false;
 int lastMouseX = 0;
 int lastMouseY = 0;
 
-// Global scene params
+// global scene params
 WaveParams gWave;
 BoothLayout gBooth;
 
-// Mouse button handler for camera orbit (left) and zoom (right)
+// mouse button handler for camera orbit (left) and zoom (right)
 void mouseButton(int button, int state, int x, int y)
 {
   if (button == GLUT_LEFT_BUTTON)
@@ -54,7 +75,7 @@ void mouseButton(int button, int state, int x, int y)
   }
 }
 
-// Mouse motion handler for camera orbit (left) and zoom (right)
+// mouse motion handler for camera orbit (left) and zoom (right)
 void mouseMotion(int x, int y)
 {
   if (leftMouseDown)
@@ -85,34 +106,34 @@ void mouseMotion(int x, int y)
   }
 }
 
-// Compute all booth dimensions + wave parameters once
+// compute all booth dimensions + wave parameters once
 void setupSceneParams()
 {
-  // A single, human-readable "scale knob"
+  // a single, human-readable "scale knob"
   gBooth.duckBodyR = 1.2f;
 
-  // Opening geometry
+  // opening geometry
   gBooth.openW = gBooth.duckBodyR * 16.0f;
   gBooth.openH = gBooth.duckBodyR * 7.0f;
 
-  // Base
+  // base
   gBooth.baseH = gBooth.duckBodyR * 2.8f;
   gBooth.baseCenterY = -3.25f;
   gBooth.baseTopY = gBooth.baseCenterY + gBooth.baseH * 0.5f;
   gBooth.groundY = gBooth.baseCenterY - gBooth.baseH * 0.5f;
 
-  // Pillars
+  // pillars
   gBooth.pillarW = gBooth.duckBodyR * 1.6f;
   const float halfOpenW = gBooth.openW * 0.5f;
   gBooth.pillarX = halfOpenW + gBooth.pillarW * 0.5f;
   gBooth.pillarsOuterHalf = gBooth.pillarX + gBooth.pillarW * 0.5f;
 
-  // Base footprint vs wave clearance
+  // base footprint vs wave clearance
   const float waveSideClear = gBooth.duckBodyR * 0.4f;
   gBooth.baseW = gBooth.openW - 2.0f * waveSideClear;
   gBooth.baseDepth = gBooth.pillarW * 1.4f;
 
-  // Top beam
+  // top beam
   gBooth.beamH = gBooth.duckBodyR * 1.8f;
   gBooth.beamOverhang = gBooth.duckBodyR * 1.0f;
   gBooth.beamUndersideY = gBooth.baseTopY + gBooth.openH;
@@ -122,7 +143,7 @@ void setupSceneParams()
   gBooth.beamW = (gBooth.pillarsOuterHalf + gBooth.beamOverhang) * 2.0f;
   gBooth.beamCenterY = gBooth.beamUndersideY + gBooth.beamH * 0.5f;
 
-  // Wave
+  // wave
   gWave.width = gBooth.baseW;
   gWave.waves = 6;
   gWave.amp = gBooth.duckBodyR * 0.72f;
@@ -133,7 +154,7 @@ void setupSceneParams()
   gWave.x1 = gWave.width * 0.5f;  // right of base
 }
 
-// MAIN
+// main
 int main(int argc, char **argv)
 {
   glutInit(&argc, argv);
@@ -153,7 +174,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
-// INIT
+// init
 void initOpenGL(int w, int h)
 {
   GLfloat light_pos[] = {-4.0f, 8.0f, 8.0f, 1.0f};
@@ -177,21 +198,21 @@ void initOpenGL(int w, int h)
   glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
   glEnable(GL_NORMALIZE);
 
-  // Ground mesh
+  // ground mesh
   Vector3 origin(-16.0f, 0.0f, 16.0f);
   Vector3 dir1(1.0f, 0.0f, 0.0f);
   Vector3 dir2(0.0f, 0.0f, -1.0f);
   groundMesh = new QuadMesh(meshSize, 32.0f);
   groundMesh->InitMesh(meshSize, origin, 32.0, 32.0, dir1, dir2);
 
-  // Reusable unit panel (1x1 in XY, centered at origin)
+  // reusable unit panel (1x1 in xy, centered at origin)
   panelMesh = QuadMesh::MakeUnitPanel();
 
-  // Compute shared scene parameters once
+  // compute shared scene parameters once
   setupSceneParams();
 }
 
-// DISPLAY
+// display
 void display(void)
 {
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -208,10 +229,37 @@ void display(void)
   glutMouseFunc(mouseButton);
   glutMotionFunc(mouseMotion);
 
+  // booth drawing
   drawBooth();
 
+  // draw the duck at its current position and orientation
   glPushMatrix();
-  glTranslatef(duckPos.x, duckPos.y, duckPos.z);
+
+  if (duckState == TURN_AT_RIGHT)
+  {
+    // 180 degree turn under the wave (clockwise)
+    glTranslatef(turnPivotX, turnPivotY, duckPos.z);
+    glRotatef(ROT_DIR * duckSpinDeg, 0, 0, 1);
+    glTranslatef(0.0f, +turnRadius, 0.0f);
+    // facing is handled by the orbit
+  }
+  else if (duckState == TURN_AT_LEFT)
+  {
+    // 180 degree turn over the duck (clockwise)
+    glTranslatef(turnPivotX, turnPivotY, duckPos.z);
+    glRotatef(ROT_DIR * duckSpinDeg, 0, 0, 1);
+    glTranslatef(0.0f, -turnRadius, 0.0f);
+    // extra rotation to face the correct direction
+    glRotatef(180.0f, 0, 0, 1);
+  }
+  else
+  {
+    // straight segments
+    glTranslatef(duckPos.x, duckPos.y, duckPos.z);
+    if (duckState == BACKWARD)
+      glRotatef(180.0f, 0, 0, 1); // face left when moving back
+  }
+
   drawDuck();
   glPopMatrix();
 
@@ -224,7 +272,7 @@ void display(void)
   glutSwapBuffers();
 }
 
-// DUCK
+// duck
 void drawDuck()
 {
   drawDuckBody();
@@ -267,14 +315,14 @@ void drawDuckHead()
 
 void drawDuckEyes()
 {
-  // Right eye
+  // right eye
   glPushMatrix();
   glTranslatef(0.72f, 1.92f, 0.5f);
   glColor3f(0.0, 0.0, 0.0);
   glutSolidSphere(0.117f, 16, 16);
   glPopMatrix();
 
-  // Left eye
+  // left eye
   glPushMatrix();
   glTranslatef(0.72f, 1.92f, -0.5f);
   glColor3f(0.0, 0.0, 0.0);
@@ -305,7 +353,7 @@ void drawDuckTail()
 
 void drawDuckTarget()
 {
-  // Base red flattened sphere
+  // base red flattened sphere
   glPushMatrix();
   glTranslatef(0.0f, -0.18f, 1.14f);
   glScalef(0.22f, 0.22f, 0.06f);
@@ -313,7 +361,7 @@ void drawDuckTarget()
   glutSolidSphere(4.0, 30, 30);
   glPopMatrix();
 
-  // White flattened sphere
+  // white flattened sphere
   glPushMatrix();
   glTranslatef(0.0f, -0.18f, 1.26f);
   glScalef(0.22f, 0.22f, 0.06f);
@@ -321,7 +369,7 @@ void drawDuckTarget()
   glutSolidSphere(3.0, 30, 30);
   glPopMatrix();
 
-  // Red flattened sphere
+  // red flattened sphere
   glPushMatrix();
   glTranslatef(0.0f, -0.18f, 1.38f);
   glScalef(0.22f, 0.22f, 0.06f);
@@ -330,7 +378,7 @@ void drawDuckTarget()
   glPopMatrix();
 }
 
-// Global wave helpers
+// global wave helpers
 float waveYAt(float x)
 {
   // map x into t∈[0,1] across [x0,x1]
@@ -339,13 +387,13 @@ float waveYAt(float x)
   return gWave.lift + gWave.amp * sinf(2.f * (float)M_PI * gWave.waves * t);
 }
 
-// Wave geometry
+// wave geometry
 void drawWaterWave3D()
 {
   const float halfT = gWave.thickZ * 0.5f;
   const float step = 0.08f;
 
-  // Crest surface
+  // crest surface
   glColor3f(0.663f, 0.882f, 0.973f); // #a9e1f8
   glBegin(GL_TRIANGLE_STRIP);
   for (float x = gWave.x0; x <= gWave.x1 + 1e-4f; x += step)
@@ -356,7 +404,7 @@ void drawWaterWave3D()
   }
   glEnd();
 
-  // Front face (filled down to base)
+  // front face (filled down to base)
   glBegin(GL_QUAD_STRIP);
   for (float x = gWave.x0; x <= gWave.x1 + 1e-4f; x += step)
   {
@@ -366,7 +414,7 @@ void drawWaterWave3D()
   }
   glEnd();
 
-  // Back face
+  // back face
   glBegin(GL_QUAD_STRIP);
   for (float x = gWave.x0; x <= gWave.x1 + 1e-4f; x += step)
   {
@@ -376,7 +424,7 @@ void drawWaterWave3D()
   }
   glEnd();
 
-  // Bottom
+  // bottom
   glBegin(GL_QUADS);
   glVertex3f(gWave.x0, gWave.baseY, halfT);
   glVertex3f(gWave.x1, gWave.baseY, halfT);
@@ -384,7 +432,7 @@ void drawWaterWave3D()
   glVertex3f(gWave.x0, gWave.baseY, -halfT);
   glEnd();
 
-  // End caps
+  // end caps
   float yL = waveYAt(gWave.x0), yR = waveYAt(gWave.x1);
   glBegin(GL_QUADS); // left
   glVertex3f(gWave.x0, gWave.baseY, halfT);
@@ -401,21 +449,21 @@ void drawWaterWave3D()
   glEnd();
 }
 
-// Booth & wave drawing
+// booth & wave drawing
 void drawBooth()
 {
   // colors
   const float colPillars[3] = {0.447f, 0.443f, 0.506f}; // #727181
   const float colBeam[3] = {0.537f, 0.467f, 0.467f};    // #897777
 
-  // Base
+  // base
   glColor3fv(colPillars);
   glPushMatrix();
   glTranslatef(0.0f, gBooth.baseCenterY, 0.0f);
   QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.baseW, gBooth.baseH, gBooth.baseDepth);
   glPopMatrix();
 
-  // Pillars
+  // pillars
   glColor3fv(colPillars);
   glPushMatrix();
   glTranslatef(-gBooth.pillarX, gBooth.pillarCenterY, 0.0f);
@@ -427,21 +475,21 @@ void drawBooth()
   QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.pillarW, gBooth.pillarH, gBooth.pillarW);
   glPopMatrix();
 
-  // Top beam
+  // top beam
   glColor3fv(colBeam);
   glPushMatrix();
   glTranslatef(0.0f, gBooth.beamCenterY, 0.0f);
   QuadMesh::DrawBoxFromPanel(panelMesh, gBooth.beamW, gBooth.beamH, gBooth.duckBodyR * 1.8f);
   glPopMatrix();
 
-  // Water wave (sits on base top)
+  // water wave (sits on base top)
   glPushMatrix();
   glTranslatef(0.0f, gBooth.baseTopY, 0.0f);
   drawWaterWave3D();
   glPopMatrix();
 }
 
-// HANDLERS
+// handlers
 void reshape(int w, int h)
 {
   glViewport(0, 0, w, h);
@@ -457,16 +505,82 @@ void keyboard(unsigned char key, int x, int y)
     exit(0);
 }
 
-// Single source of truth for wave used here (no duplication)
-void animationHandler(int value)
+// single source of truth for wave used here (no duplication)
+void animationHandler(int)
 {
-  // Move duck left -> right across the full wave span
-  duckPos.x -= 0.05f;
-  if (duckPos.x < gWave.x0)
-    duckPos.x = gWave.x1;
+  switch (duckState)
+  {
+  case FORWARD:
+    // follow the sine wave left -> right
+    duckPos.x += moveSpeed;
+    duckPos.y = waveYAt(duckPos.x) - 0.10f;
 
-  // Place duck on the crest (slightly sunk for aesthetics)
-  duckPos.y = waveYAt(duckPos.x) - 0.10f;
+    if (duckPos.x >= gWave.x1)
+    {
+      // clamp and set up a clockwise 180 degrees turn under the wave
+      duckPos.x = gWave.x1;
+      duckPos.y = waveYAt(gWave.x1) - 0.10f;
+
+      // wider turn so the duck is clearly under the wave
+      turnRadius = gWave.amp * 2.4f;
+      turnPivotX = duckPos.x;
+      turnPivotY = duckPos.y - turnRadius;
+
+      duckSpinDeg = 0.0f;
+      duckState = TURN_AT_RIGHT;
+    }
+    break;
+
+  case TURN_AT_RIGHT:
+    // rotate 0 -> 180 degrees clockwise around the below pivot
+    duckSpinDeg += spinSpeed;
+    if (duckSpinDeg >= 180.0f)
+    {
+      duckSpinDeg = 180.0f;
+
+      // land at the bottom of the arc and start flat return (right -> left)
+      duckPos.x = turnPivotX;
+      duckPos.y = turnPivotY - turnRadius;
+      duckState = BACKWARD;
+    }
+    break;
+
+  case BACKWARD:
+    // flat horizontal return (no sine)
+    duckPos.x -= moveSpeed;
+    // keep the same y set at the end of the right turn
+
+    if (duckPos.x <= gWave.x0)
+    {
+      duckPos.x = gWave.x0;
+
+      // set up a clockwise 180 degrees turn over the duck to bring it back above the wave
+      turnRadius = gWave.amp * 2.4f; // match right turn width/height
+      turnPivotX = duckPos.x;        // pivot directly above current pos
+      turnPivotY = duckPos.y + turnRadius;
+
+      duckSpinDeg = 0.0f;
+      duckState = TURN_AT_LEFT;
+    }
+    break;
+
+  case TURN_AT_LEFT:
+    // rotate 0 -> 180 clockwise around the above pivot
+    duckSpinDeg += spinSpeed;
+    if (duckSpinDeg >= 180.0f)
+    {
+      duckSpinDeg = 180.0f;
+
+      // land at the top of the arc and resume sine motion forward
+      duckPos.x = turnPivotX;
+      duckPos.y = turnPivotY + turnRadius;
+
+      // normalize and continue cycle
+      duckSpinDeg = 0.0f;
+      duckState = FORWARD;
+    }
+    break;
+  }
 
   glutPostRedisplay();
   glutTimerFunc(16, animationHandler, 0);
