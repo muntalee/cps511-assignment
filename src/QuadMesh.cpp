@@ -33,6 +33,7 @@ QuadMesh::QuadMesh(int maxMeshSize, float meshDim)
 	CreateMemory();
 }
 
+// create memory for mesh
 bool QuadMesh::CreateMemory()
 {
 	vertices = new MeshVertex[(maxMeshSize + 1) * (maxMeshSize + 1)];
@@ -46,6 +47,7 @@ bool QuadMesh::CreateMemory()
 	return true;
 }
 
+// initialize mesh
 bool QuadMesh::InitMesh(int meshSize, Vector3 origin, double meshLength, double meshWidth, Vector3 dir1, Vector3 dir2)
 {
 	Vector3 o;
@@ -103,6 +105,7 @@ bool QuadMesh::InitMesh(int meshSize, Vector3 origin, double meshLength, double 
 	return true;
 }
 
+// draw mesh using immediate mode
 void QuadMesh::DrawMesh(int meshSize)
 {
 	int currentQuad = 0;
@@ -127,9 +130,7 @@ void QuadMesh::DrawMesh(int meshSize)
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// add single vertex to array
-///////////////////////////////////////////////////////////////////////////////
+// add one vertex to array
 void QuadMesh::addVertex(float x, float y, float z)
 {
 	verticesVBO.push_back(x);
@@ -137,9 +138,7 @@ void QuadMesh::addVertex(float x, float y, float z)
 	verticesVBO.push_back(z);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// add single normal to array
-///////////////////////////////////////////////////////////////////////////////
+// add one normal to array
 void QuadMesh::addNormal(float nx, float ny, float nz)
 {
 	normalsVBO.push_back(nx);
@@ -147,9 +146,7 @@ void QuadMesh::addNormal(float nx, float ny, float nz)
 	normalsVBO.push_back(nz);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// add single quad indices
-///////////////////////////////////////////////////////////////////////////////
+// add one quad indices
 void QuadMesh::addIndices(unsigned int i1, unsigned int i2, unsigned int i3, unsigned int i4)
 {
 	indices.push_back(i1);
@@ -158,9 +155,7 @@ void QuadMesh::addIndices(unsigned int i1, unsigned int i2, unsigned int i3, uns
 	indices.push_back(i4);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// compute normals
-///////////////////////////////////////////////////////////////////////////////
+// compute normals for mesh
 void QuadMesh::ComputeNormals()
 {
 	int currentQuad = 0;
@@ -211,14 +206,72 @@ void QuadMesh::ComputeNormals()
 	}
 }
 
+// create mesh VBOs
+void QuadMesh::CreateMeshVBO(int /*meshSize*/, GLint attribVertexPosition, GLint attribVertexNormal)
+{
+	if (vboReady)
+		return;
+	if (verticesVBO.empty() || normalsVBO.empty() || indices.empty())
+		return;
+
+	attrPos = attribVertexPosition;
+	attrNorm = attribVertexNormal;
+
+	glGenBuffers(3, vbos);
+
+	// positions
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * verticesVBO.size(), verticesVBO.data(), GL_STATIC_DRAW);
+
+	// normals
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * normalsVBO.size(), normalsVBO.data(), GL_STATIC_DRAW);
+
+	// indices
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbos[2]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	vboReady = true;
+}
+
+// draw mesh using VBOs
+void QuadMesh::DrawMeshVBO(int /*meshSize*/)
+{
+	if (!vboReady)
+	{
+		DrawMesh(maxMeshSize);
+		return;
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[0]);
+	glEnableVertexAttribArray((GLuint)attrPos);
+	glVertexAttribPointer((GLuint)attrPos, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbos[1]);
+	glEnableVertexAttribArray((GLuint)attrNorm);
+	glVertexAttribPointer((GLuint)attrNorm, 3, GL_FLOAT, GL_FALSE, 0, (void *)0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbos[2]);
+	glDrawElements(GL_QUADS, (GLsizei)indices.size(), GL_UNSIGNED_INT, (void *)0);
+
+	glDisableVertexAttribArray((GLuint)attrPos);
+	glDisableVertexAttribArray((GLuint)attrNorm);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+// make a unit panel mesh
 QuadMesh *QuadMesh::MakeUnitPanel()
 {
 	auto *m = new QuadMesh(1, 1.0f);
-	// 1x1 quad in XY, center at origin -> origin at (-0.5,-0.5,0)
 	m->InitMesh(1, Vector3(-0.5f, -0.5f, 0.0f), 1.0, 1.0, Vector3(1, 0, 0), Vector3(0, 1, 0));
 	return m;
 }
 
+// draw a box using a panel mesh
 void QuadMesh::DrawBoxFromPanel(QuadMesh *panel, float w, float h, float d)
 {
 	if (!panel)
