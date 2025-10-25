@@ -13,19 +13,26 @@ struct Material {
 };
 uniform Material uMat;
 
-void main() {
-  vec3 N = normalize(vNormalWS);
-  vec3 L = normalize(uLightPos - vPosWS);
-  vec3 V = normalize(uViewPos - vPosWS);
-  vec3 H = normalize(L + V);
+void main()
+{
+  // lighting calculations
+  vec3 norm = normalize(vNormalWS);
+  vec3 lightDir = normalize(uLightPos - vPosWS);
+  vec3 viewDir = normalize(uViewPos - vPosWS);
+  vec3 reflectDir = reflect(-lightDir, norm);
 
-  float NdotL = max(dot(N, L), 0.0);
-  float NdotH = max(dot(N, H), 0.0);
-
+  // Phong model
   vec3 ambient = uMat.ambient;
-  vec3 diffuse = uMat.diffuse * NdotL;
-  vec3 spec = (NdotL > 0.0) ? uMat.specular * pow(NdotH, uMat.shininess) : vec3(0.0);
+  vec3 diffuse = uMat.diffuse * max(dot(norm, lightDir), 0.0);
+  vec3 specular = uMat.specular * pow(max(dot(viewDir, reflectDir), 0.0), uMat.shininess);
 
-  vec3 color = ambient + diffuse + spec;
+  vec3 color = ambient + diffuse + specular;
   gl_FragColor = vec4(color, 1.0);
+  // mixed color 1
+  // gl_FragColor = vec4(abs(sin(vPosWS.x)), abs(sin(vPosWS.z)), 0.5, 1.0);
+
+  // mixed color 2
+  // vec3 tint = vec3(abs(sin(vPosWS.x)), abs(sin(vPosWS.z)), 0.5);
+  // vec3 finalColor = mix(color, tint, 0.4);
+  // gl_FragColor = vec4(finalColor, 1.0);
 }
