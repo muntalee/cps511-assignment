@@ -30,8 +30,8 @@ const int ROT_DIR = -1;
 
 // angles and speeds
 float duckSpinDeg = 0.0f;
-const float moveSpeed = 0.05f;
-const float spinSpeed = 3.0f;
+const float moveSpeed = 0.06f;
+const float spinSpeed = 4.0f;
 
 // turn geometry
 float turnRadius = 0.0f;
@@ -43,13 +43,32 @@ QuadMesh *groundMesh = nullptr;
 QuadMesh *panelMesh = nullptr;
 int meshSize = 16;
 
+// camera parameters
 float cameraZoom = 22.0f;
 float cameraYaw = 0.0f;
 float cameraPitch = 0.0f;
+
+// limits
+const float CAMERA_YAW_MIN = -90.0f;   // leftmost view
+const float CAMERA_YAW_MAX = 90.0f;    // rightmost view
+const float CAMERA_PITCH_MIN = -10.0f; // how far down you can look
+const float CAMERA_PITCH_MAX = 10.0f;  // how far up you can look
+const float CAMERA_ZOOM_MIN = 10.0f;   // closest zoom
+const float CAMERA_ZOOM_MAX = 30.0f;   // farthest zoom
+
 bool leftMouseDown = false;
 bool rightMouseDown = false;
+// visibility toggle
+bool showBase = true; // booth base visible by default
+
 int lastMouseX = 0;
 int lastMouseY = 0;
+
+// flip animation
+bool isFlipping = false;      // currently flipping?
+bool isFlipped = false;       // fully flipped down?
+float flipAngle = 0.0f;       // current rotation around x-axis
+const float flipSpeed = 5.0f; // degrees per frame
 
 // global scene parameters
 WaveParams gWave;
@@ -64,13 +83,13 @@ void mouseButton(int button, int state, int x, int y)
     leftMouseDown = (state == GLUT_DOWN), lastMouseX = x, lastMouseY = y;
   else if (button == GLUT_RIGHT_BUTTON)
     rightMouseDown = (state == GLUT_DOWN), lastMouseY = y;
-  else if ((button == 3 || button == 4) && state == GLUT_DOWN)
+  else if ((button == 3 || button == 4) && state == GLUT_DOWN) // scroll wheel
   {
     cameraZoom += (button == 3 ? -1.0f : 1.0f);
-    if (cameraZoom < 5.0f)
-      cameraZoom = 5.0f;
-    if (cameraZoom > 60.0f)
-      cameraZoom = 60.0f;
+    if (cameraZoom < CAMERA_ZOOM_MIN)
+      cameraZoom = CAMERA_ZOOM_MIN;
+    if (cameraZoom > CAMERA_ZOOM_MAX)
+      cameraZoom = CAMERA_ZOOM_MAX;
     glutPostRedisplay();
   }
 }
@@ -80,27 +99,34 @@ void mouseMotion(int x, int y)
 {
   if (leftMouseDown)
   {
+    // adjust yaw (left/right)
     cameraYaw += (x - lastMouseX) * 0.5f;
+    // Clamp to 180° total range
+    if (cameraYaw > CAMERA_YAW_MAX)
+      cameraYaw = CAMERA_YAW_MAX;
+    if (cameraYaw < CAMERA_YAW_MIN)
+      cameraYaw = CAMERA_YAW_MIN;
+
+    // sdjust pitch (up/down)
     cameraPitch += (y - lastMouseY) * 0.5f;
-    if (cameraPitch > 89.0f)
-      cameraPitch = 89.0f;
-    if (cameraPitch < -89.0f)
-      cameraPitch = -89.0f;
-    if (cameraYaw >= 360.0f)
-      cameraYaw -= 360.0f;
-    if (cameraYaw < 0.0f)
-      cameraYaw += 360.0f;
+    // clamp vertical look range
+    if (cameraPitch > CAMERA_PITCH_MAX)
+      cameraPitch = CAMERA_PITCH_MAX;
+    if (cameraPitch < CAMERA_PITCH_MIN)
+      cameraPitch = CAMERA_PITCH_MIN;
+
     lastMouseX = x;
     lastMouseY = y;
     glutPostRedisplay();
   }
   else if (rightMouseDown)
   {
+    // smooth zoom
     cameraZoom += (y - lastMouseY) * 0.1f;
-    if (cameraZoom < 5.0f)
-      cameraZoom = 5.0f;
-    if (cameraZoom > 60.0f)
-      cameraZoom = 60.0f;
+    if (cameraZoom < CAMERA_ZOOM_MIN)
+      cameraZoom = CAMERA_ZOOM_MIN;
+    if (cameraZoom > CAMERA_ZOOM_MAX)
+      cameraZoom = CAMERA_ZOOM_MAX;
     lastMouseY = y;
     glutPostRedisplay();
   }
@@ -267,6 +293,10 @@ void display(void)
     if (duckState == BACKWARD)
       glRotatef(180.0f, 0, 0, 1);
   }
+
+  // flip duck depending on angle
+  glRotatef(flipAngle, 1, 0, 0);
+
   drawDuck();
   glPopMatrix();
 
@@ -529,11 +559,14 @@ void drawBooth()
   const float colPillars[3] = {0.447f, 0.443f, 0.506f};
   const float colBeam[3] = {0.537f, 0.467f, 0.467f};
 
-  glColor3fv(colPillars);
-  glPushMatrix();
-  glTranslatef(0.0f, gBooth.baseCenterY, 0.0f);
-  drawBox(gBooth.baseW, gBooth.baseH, gBooth.baseDepth);
-  glPopMatrix();
+  if (showBase)
+  {
+    glColor3fv(colPillars);
+    glPushMatrix();
+    glTranslatef(0.0f, gBooth.baseCenterY, 0.0f);
+    drawBox(gBooth.baseW, gBooth.baseH, gBooth.baseDepth);
+    glPopMatrix();
+  }
 
   glColor3fv(colPillars);
   glPushMatrix();
@@ -571,8 +604,19 @@ void reshape(int w, int h)
 // keyboard handler
 void keyboard(unsigned char key, int x, int y)
 {
-  if (key == 27)
+  if (key == 27) // ESC to quit
     exit(0);
+
+  if ((key == 'f' || key == 'F') && duckState == FORWARD && !isFlipping && !isFlipped)
+  {
+    isFlipping = true;
+  }
+
+  if (key == 32) // SPACE key
+  {
+    showBase = !showBase; // toggle visibility
+    glutPostRedisplay();
+  }
 }
 
 // animation handler
@@ -639,6 +683,29 @@ void animationHandler(int)
       duckState = FORWARD;
     }
     break;
+  }
+
+  // flipping animation
+  if (isFlipping)
+  {
+    // rotate downwards
+    flipAngle -= flipSpeed;
+    if (flipAngle <= -90.0f)
+    {
+      flipAngle = -90.0f;
+      isFlipping = false;
+      isFlipped = true;
+    }
+  }
+  else if (isFlipped && duckState == BACKWARD)
+  {
+    // auto flip back up when moving right -> left
+    flipAngle += flipSpeed;
+    if (flipAngle >= 0.0f)
+    {
+      flipAngle = 0.0f;
+      isFlipped = false;
+    }
   }
 
   glutPostRedisplay();

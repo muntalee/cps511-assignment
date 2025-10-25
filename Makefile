@@ -19,7 +19,7 @@ build:
 	cmake -S . -B $(BUILD_DIR) -G "Ninja" -DCMAKE_EXPORT_COMPILE_COMMANDS=on
 
 clean:
-	$(RM) $(BUILD_DIR)
+	$(RM) $(BUILD_DIR) .cache
 
 run: compile
 	$(RUN)
