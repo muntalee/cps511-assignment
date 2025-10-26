@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(game VERSION 1.0)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
+set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
@@ -74,9 +76,13 @@ elseif (APPLE)
     )
     add_definitions(-DGL_SILENCE_DEPRECATION)
 else()
+    find_package(OpenGL REQUIRED)
     target_link_libraries(${OUT}
         PRIVATE
             freeglut_static
+            OpenGL::GL
+            OpenGL::GLU
+            m
+            X11 Xrandr Xi Xxf86vm GLX OpenGL
     )
 endif()
-

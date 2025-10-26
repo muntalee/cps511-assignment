@@ -1,10 +1,37 @@
-# OpenGL Boilerplate Setup
+# CPS511 Assignment 1 - Shooting a Duck ig
 
 ## Download
 
 ```
 git clone --recurse-submodules https://github.com/muntalee/cps511-assignment/
 ```
+
+## Customization
+
+* By default, the project builds an executable named `game`.
+* To change this:
+
+  1. Update the variable `EXE = game` in the `Makefile`.
+  2. Change `game` in the `project(game VERSION 1.0)` line in `CMakeLists.txt`.
+
+## Features
+
+* Large Duck
+* Rendered Booth with Wave on top
+* Duck moving alongside the Wave
+* Flipping the target 90 degrees by pressing `F`
+* Remove/Reveal base of booth by pressing `Space`
+* Ground mesh rendered using VBOs and shaders
+* Camera movement
+  * Hold Left click for panning
+  * Hold Right click for zooming in/out
+
+## Not Included
+
+* Any bonus marks
+  * 4x4 model
+  * Texture mapping
+
 
 ## Dependencies
 
@@ -71,53 +98,4 @@ make build     # creates build
 make compile   # compiles the build
 make run       # build and run
 make clean     # cleans up build files / executable
-```
-
-## Customization
-
-* By default, the project builds an executable named `game`.
-* To change this:
-
-  1. Update the variable `EXE = game` in the `Makefile`.
-  2. Change `game` in the `project(game VERSION 1.0)` line in `CMakeLists.txt`.
-
-## Adding more libraries
-
-### Option 1: Drop-in
-
-* Place the library source under `extern/`
-* In `CMakeLists.txt`:
-
-  ```cmake
-  add_subdirectory(extern/mylib)
-  target_link_libraries(${OUT} PRIVATE mylib)
-  target_include_directories(${OUT} PRIVATE extern/mylib/include)
-  ```
-
-### Option 2: Git Submodules
-
-If the library is hosted on GitHub or elsewhere, you can add it as a `submodule`:
-
-```bash
-git submodule add https://github.com/some/library.git extern/library
-git submodule update --init --recursive
-```
-
-Then link it in `CMakeLists.txt`:
-
-```cmake
-add_subdirectory(extern/library)
-target_link_libraries(${OUT} PRIVATE library)
-```
-
-When cloning this repo later, don’t forget to pull submodules too:
-
-```bash
-git clone --recurse-submodules https://github.com/your/repo.git
-```
-
-Or if you forgot:
-
-```bash
-git submodule update --init --recursive
 ```
