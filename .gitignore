@@ -40,3 +40,6 @@ build
 .cache
 .DS_Store
 src/debug*
+
+# for my assignment submission
+recording.mov
