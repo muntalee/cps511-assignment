@@ -5,7 +5,7 @@ EXE = game
 ifeq ($(OS),Windows_NT)
     RM = rmdir /S /Q
     EXE_EXT = .exe
-    RUN = $(BUILD_DIR)\$(EXE)$(EXE_EXT)
+    RUN = .\$(BUILD_DIR)\$(EXE)$(EXE_EXT)
 else
     RM = rm -rf
     EXE_EXT =

@@ -233,7 +233,7 @@ void initOpenGL(int w, int h)
   setupSceneParams();                    // compute scene constants
 
   // load ground shader program
-  std::string base = "include/shaders/";
+  std::string base = "data/shaders/";
   std::string err;
   gGroundProg = MakeGroundProgram(base + "ground.vert", base + "ground.frag", &err);
 
