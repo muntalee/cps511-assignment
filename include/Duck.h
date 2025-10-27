@@ -7,13 +7,11 @@
 #include <ctime>
 
 // opengl & glm
-#define GLEW_STATIC
 #include <GL/glew.h>
 #ifdef _WIN32
 #include <GL/wglew.h>
 #endif
 
-#define FREEGLUT_STATIC
 #include <GL/freeglut.h>
 
 #define GLM_FORCE_RADIANS

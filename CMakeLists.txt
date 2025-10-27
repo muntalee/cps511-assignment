@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.5)
 project(game VERSION 1.0)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -g")
-set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
+if (NOT WIN32)
+    message(STATUS "Enabling AddressSanitizer for non-Windows builds")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+    set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address")
+else()
+    message(WARNING "AddressSanitizer not supported on Windows MinGW; skipping -fsanitize=address")
+endif()
 
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
@@ -45,7 +53,7 @@ endif()
 
 # make sure Windows builds know it's static
 if (WIN32)
-    target_compile_definitions(glew PUBLIC GLEW_STATIC)
+    target_compile_definitions(glew PUBLIC GLEW_STATIC FREEGLUT_STATIC)
 endif()
 
 # link libraries
